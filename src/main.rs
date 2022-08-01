@@ -1,5 +1,7 @@
 pub mod file;
 
+pub mod type_macro;
+
 use file::*;
 
 use std::fs::File;
@@ -11,22 +13,32 @@ fn main() {
     let mut v = bw.interpret_at::<ElfHeader>(0).instantiate();
     let r = v.as_mut();
     println!("{:?}", r);
-    r.e_type = ElfType {
-        inner: ElfType::REL,
-    };
+    r.e_type = ElfType::NONE;
 
     bw.write_back_obj(v);
 
     let mut v = bw.interpret_at::<ElfHeader>(0).instantiate();
     let r = v.as_mut();
     println!("{:?}", r);
-    r.e_type = ElfType {
-        inner: ElfType::REL,
-    };
 
     bw.write_back_obj(v);
 }
 
+define_prim_wrap!(
+    ElfType,
+    u16,
+    [NONE, 0],
+    [REL, 1],
+    [EXEC, 2],
+    [DYN, 3],
+    [CORE, 4],
+    [LOOS, 0xfe00],
+    [HIOS, 0xfeff],
+    [LOPROC, 0xff00],
+    [HIPROC, 0xffff],
+);
+
+/*
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct ElfType {
@@ -69,6 +81,7 @@ impl core::fmt::Debug for ElfType {
         write!(fmt, "{}", self.inner)
     }
 }
+*/
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
