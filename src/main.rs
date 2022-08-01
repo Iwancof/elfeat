@@ -8,14 +8,27 @@ fn main() {
 
     let mut bw = BinaryWrapper::from_file(file);
 
-    let v = bw.eat::<ElfHeader>();
-    v.e_type = ElfType {
+    let mut v = bw.interpret_at::<ElfHeader>(0).instantiate();
+    let r = v.as_mut();
+    println!("{:?}", r);
+    r.e_type = ElfType {
         inner: ElfType::REL,
     };
-    println!("{:?}", v);
+
+    bw.write_back_obj(v);
+
+    let mut v = bw.interpret_at::<ElfHeader>(0).instantiate();
+    let r = v.as_mut();
+    println!("{:?}", r);
+    r.e_type = ElfType {
+        inner: ElfType::REL,
+    };
+
+    bw.write_back_obj(v);
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct ElfType {
     inner: u16,
 }
@@ -58,7 +71,7 @@ impl core::fmt::Debug for ElfType {
 }
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct ElfHeader {
     // this struct will move
     e_ident: [u8; 16],
