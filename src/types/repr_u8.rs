@@ -15,7 +15,6 @@ where
         if slice.len() < Self::size() {
             return Err(slice);
         }
-
         Ok(slice.split_at(Self::size()))
     }
 
@@ -23,59 +22,53 @@ where
         if slice.len() < Self::size() {
             return Err(slice);
         }
-
         Ok(slice.split_at_mut(Self::size()))
     }
 
-    fn constitude<'a>(slice: &'a [u8]) -> Result<(&'a Self, &'a [u8]), &'a [u8]>;
+    fn constitude<'a>(slice: &'a [u8]) -> Result<(&'a Self, &'a [u8]), &'a [u8]> {
+        let (left, right) = Self::split_at_self_size(slice)?;
+        let s = Self::from_slice(left);
+
+        Ok((s, right))
+    }
     fn constitude_mut<'a>(
         slice: &'a mut [u8],
-    ) -> Result<(&'a mut Self, &'a mut [u8]), &'a mut [u8]>;
-    fn to_array<'a>(&'a self) -> &'a [u8] {
-        // Safety: Self has size `size()`
+    ) -> Result<(&'a mut Self, &'a mut [u8]), &'a mut [u8]> {
+        let (left, right) = Self::split_at_self_size_mut(slice)?;
+        let s = Self::from_slice_mut(left);
+
+        Ok((s, right))
+    }
+    fn from_slice<'a>(slice: &'a [u8]) -> &'a Self {
+        // TODO: const &'a [u8; Self::size()] -> &'a Self.
+        assert_eq!(slice.len(), Self::size());
+        // Safety: slice's length is sizeof($inner).
+        unsafe { &*(slice.as_ptr() as *const u8 as *const Self) }
+    }
+    fn to_slice<'a>(&'a self) -> &'a [u8] {
+        // Safety: self's length is Self::size()
         unsafe { core::slice::from_raw_parts(self as *const Self as *const u8, Self::size()) }
     }
-
-    fn to_array_mut<'a>(&'a mut self) -> &'a mut [u8] {
-        // Safety: Self has size `size()`
+    fn from_slice_mut<'a>(slice: &'a mut [u8]) -> &'a mut Self {
+        assert_eq!(slice.len(), Self::size());
+        // Safety: slice's length is sizeof($inner).
+        unsafe { &mut *(slice.as_mut_ptr() as *mut u8 as *mut Self) }
+    }
+    fn to_slice_mut<'a>(&'a mut self) -> &'a mut [u8] {
+        // Safety: self's length is Self::size()
         unsafe { core::slice::from_raw_parts_mut(self as *mut Self as *mut u8, Self::size()) }
     }
 }
 
 macro_rules! define_prim_type_mem_repr {
     ($typename: ident, $inner: ty) => {
-        #[repr(C)]
-        #[derive(Clone, Copy, PartialEq, Eq)]
+        #[repr(transparent)]
+        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
         pub struct $typename {
             inner: $inner,
         }
 
-        unsafe impl RepresentU8Array for $typename {
-            fn constitude<'a>(slice: &'a [u8]) -> Result<(&'a Self, &'a [u8]), &'a [u8]> {
-                let (left, right) = Self::split_at_self_size(slice)?;
-
-                let s: &Self = unsafe {
-                    let p: *const Self = core::mem::transmute(left.as_ptr());
-                    &*p
-                };
-                forget(left);
-
-                Ok((s, right))
-            }
-            fn constitude_mut<'a>(
-                slice: &'a mut [u8],
-            ) -> Result<(&'a mut Self, &'a mut [u8]), &'a mut [u8]> {
-                let (left, right) = Self::split_at_self_size_mut(slice)?;
-
-                let s: &mut Self = unsafe {
-                    let p: *mut Self = core::mem::transmute(left.as_mut_ptr());
-                    &mut *p
-                };
-                forget(left);
-
-                Ok((s, right))
-            }
-        }
+        unsafe impl RepresentU8Array for $typename {}
 
         impl $typename {
             pub const fn from_inner(inner: $inner) -> Self {
@@ -83,12 +76,6 @@ macro_rules! define_prim_type_mem_repr {
             }
             pub const fn into_inner(self) -> $inner {
                 self.inner
-            }
-        }
-
-        impl core::fmt::Debug for $typename {
-            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                write!(fmt, "{:?}", self.inner)
             }
         }
 
@@ -124,13 +111,13 @@ pub mod tests {
     #[test]
     fn cu16_to_slice_represent() {
         let val = Cu16::from_inner(0x1234);
-        assert_eq!(val.to_array(), &[0x34, 0x12]);
+        assert_eq!(val.to_slice(), &[0x34, 0x12]);
     }
 
     #[test]
     fn cu16_to_slice_change() {
         let mut val = Cu16::from_inner(0x1234);
-        let slice: &mut [u8] = val.to_array_mut();
+        let slice: &mut [u8] = val.to_slice_mut();
 
         slice[0] = 0xff;
 

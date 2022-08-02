@@ -9,3 +9,4 @@ edition = "2021"
 bincode = "*"
 serde = {version = "*", features = ["derive"]}
 libc = "*"
+ref-cast = "1.0.8"

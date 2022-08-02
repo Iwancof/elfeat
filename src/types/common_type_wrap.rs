@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! define_enchanted_type {
     ($name: ident, $inner_type: ty, $([$cons: ident, $val: expr],)*) => {
-        #[repr(C)]
+        #[repr(transparent)]
         #[derive(Copy, Clone, PartialEq, Eq)]
         struct $name {
             inner: $inner_type,
@@ -46,8 +46,5 @@ macro_rules! define_enchanted_type {
                 Ok((Self::convert(read), next))
             }
         }
-
-
-
     };
 }
