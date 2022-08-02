@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 bincode = "*"
 serde = {version = "*", features = ["derive"]}
+libc = "*"
