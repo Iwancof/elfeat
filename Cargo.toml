@@ -10,3 +10,4 @@ bincode = "*"
 serde = {version = "*", features = ["derive"]}
 libc = "*"
 ref-cast = "1.0.8"
+memoffset = "0.6.5"

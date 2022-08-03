@@ -1,47 +1,25 @@
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_mut_refs)]
 
-pub mod file;
-
 extern crate libc;
 
+pub mod file;
 pub mod types;
 
 use file::*;
+use types::composition::ElfHeader;
 
 use std::fs::File;
+
 fn main() {
     let file = File::open("./bin/main").unwrap();
 
     let mut bw = BinaryWrapper::from_file(file);
+    let mut slice = bw.to_mut_slice();
 
-    /*
-    let mut v = bw.interpret_at::<ElfHeader>(0).instantiate();
-    let r = v.as_mut();
-    println!("{:?}", r);
-    r.e_type = ElfType::NONE;
+    let (v, _) = slice
+        .interpret_next_mut::<ElfHeader>()
+        .unwrap_no_head_validity();
 
-    bw.write_back_obj(v);
-
-    let mut v = bw.interpret_at::<ElfHeader>(0).instantiate();
-    let r = v.as_mut();
-    println!("{:?}", r);
-
-    bw.write_back_obj(v);
-    */
+    println!("{:?}", v);
 }
-
-/*
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-struct ElfHeader {
-    // this struct will move
-    e_ident: [u8; 16],
-    e_type: ElfType,
-    e_machine: u16,
-    e_version: u32,
-    e_entry: u32,
-    shoff: u32,
-}
-*/
