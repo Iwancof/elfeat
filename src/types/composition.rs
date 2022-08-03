@@ -1,106 +1,97 @@
 use super::elf::{ElfMachine, ElfMagic, ElfType, ElfVersion};
 
-#[repr(C)]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ElfHeader {
-    pub e_ident: ElfMagic,
-    pub e_type: ElfType,
-    pub e_machine: ElfMachine,
-    pub e_version: ElfVersion,
+macro_rules! helper_get_first_tt {
+    ($first: tt, $($e: tt,)*) => {
+        $first
+    };
 }
 
-impl ElfHeader {
-    pub fn from_member_mut<'a>(
-        e_ident: &'a mut ElfMagic,
-        e_type: &'a mut ElfType,
-        e_machine: &'a mut ElfMachine,
-        e_version: &'a mut ElfVersion,
-    ) -> &'a mut Self {
-        use memoffset::offset_of;
-
-        let ret_ptr = Self::from_member_mut_ptr(e_ident, e_type, e_machine, e_version) as usize;
-
-        assert_eq!(
-            ret_ptr + offset_of!(Self, e_ident),
-            (e_ident as *mut _ as usize)
-        );
-        assert_eq!(
-            ret_ptr + offset_of!(Self, e_type),
-            (e_type as *mut _ as usize)
-        );
-        assert_eq!(
-            ret_ptr + offset_of!(Self, e_machine),
-            (e_machine as *mut _ as usize)
-        );
-        assert_eq!(
-            ret_ptr + offset_of!(Self, e_version),
-            (e_version as *mut _ as usize)
-        );
-
-        // Safety: Probably ok
-        let ret = unsafe { &mut *(ret_ptr as *mut Self) };
-
-        assert_eq!(&mut ret.e_ident, e_ident);
-        assert_eq!(&mut ret.e_type, e_type);
-        assert_eq!(&mut ret.e_machine, e_machine);
-        assert_eq!(&mut ret.e_version, e_version);
-
-        ret
-    }
-
-    fn from_member_mut_ptr<'a>(
-        #[allow(unused)] e_ident: *mut ElfMagic,
-        #[allow(unused)] e_type: *mut ElfType,
-        #[allow(unused)] e_machine: *mut ElfMachine,
-        #[allow(unused)] e_version: *mut ElfVersion,
-    ) -> *mut Self {
-        e_ident as *mut ElfType as *mut Self
-    }
-}
-
-impl crate::types::repr_u8::VOWrapU8Array for ElfHeader {
-    fn is_sanity(&self) -> bool {
-        self.e_ident.is_sanity()
-            && self.e_type.is_sanity()
-            && self.e_machine.is_sanity()
-            && self.e_version.is_sanity()
-    }
-}
-
-impl crate::types::repr_u8::VOWrapU8ArrayMut for ElfHeader {
-    fn constitude_mut(remain: &mut [u8]) -> crate::types::repr_u8::VOConstitudeResultMut<'_, Self> {
-        use crate::types::repr_u8::VOConstitudeResultMut;
-        let (e_ident, remain) = match ElfMagic::constitude_mut(remain) {
-            VOConstitudeResultMut::Valid(v, r) => (v, r),
-            VOConstitudeResultMut::Invalid(v, r) => (v, r),
-            VOConstitudeResultMut::Error(e) => return VOConstitudeResultMut::Error(e),
-        };
-        let (e_type, remain) = match ElfType::constitude_mut(remain) {
-            VOConstitudeResultMut::Valid(v, r) => (v, r),
-            VOConstitudeResultMut::Invalid(v, r) => (v, r),
-            VOConstitudeResultMut::Error(e) => return VOConstitudeResultMut::Error(e),
-        };
-        let (e_machine, remain) = match ElfMachine::constitude_mut(remain) {
-            VOConstitudeResultMut::Valid(v, r) => (v, r),
-            VOConstitudeResultMut::Invalid(v, r) => (v, r),
-            VOConstitudeResultMut::Error(e) => return VOConstitudeResultMut::Error(e),
-        };
-        let (e_version, remain) = match ElfVersion::constitude_mut(remain) {
-            VOConstitudeResultMut::Valid(v, r) => (v, r),
-            VOConstitudeResultMut::Invalid(v, r) => (v, r),
-            VOConstitudeResultMut::Error(e) => return VOConstitudeResultMut::Error(e),
-        };
-
-        let ret_obj = ElfHeader::from_member_mut(e_ident, e_type, e_machine, e_version);
-
-        use crate::types::repr_u8::VOWrapU8Array;
-        if ret_obj.is_sanity() {
-            VOConstitudeResultMut::Valid(ret_obj, remain)
-        } else {
-            VOConstitudeResultMut::Invalid(ret_obj, remain)
+#[macro_export]
+macro_rules! define_composition_vo {
+    ($($struct_vis: tt)? struct $struct_name: ident {
+        $($([$vis: tt])? $member: ident: $member_type: ty,)*
+            // FIXME
+    }) => {
+        #[repr(C)]
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        $($struct_vis)? struct $struct_name {
+            $($($vis)? $member: $member_type),*
         }
-    }
+
+        impl $struct_name {
+            pub fn from_member_mut<'a>(
+                $($member: &'a mut $member_type),*
+            ) -> &'a mut $struct_name {
+                use memoffset::offset_of;
+
+                let ret_ptr = Self::from_member_mut_ptr($($member),*) as usize;
+
+                $(
+                    assert_eq!(
+                        ret_ptr + offset_of!($struct_name, $member),
+                        ($member as *mut $member_type as usize)
+                    );
+                )*
+
+                // Safety: Probably ok
+                let ret = unsafe { &mut *(ret_ptr as *mut Self) };
+
+                $(
+                    assert_eq!(
+                        &mut ret.$member, $member
+                    );
+                )*
+
+                ret
+            }
+
+            fn from_member_mut_ptr(
+                $(#[allow(unused)] $member: *mut $member_type),*
+            ) -> *mut Self {
+                helper_get_first_tt!($($member, )*) as *mut helper_get_first_tt!($($member_type,)*) as *mut Self
+            }
+        }
+
+        impl crate::types::repr_u8::VOWrapU8Array for $struct_name {
+            fn is_sanity(&self) -> bool {
+                $(self.$member.is_sanity() &&)* true
+            }
+        }
+
+        impl crate::types::repr_u8::VOWrapU8ArrayMut for $struct_name {
+            fn constitude_mut(remain: &mut [u8]) -> crate::types::repr_u8::VOConstitudeResultMut<'_, $struct_name> {
+                use crate::types::repr_u8::VOConstitudeResultMut;
+
+                $(
+                    let ($member, remain) = match <$member_type>::constitude_mut(remain) {
+                        VOConstitudeResultMut::Valid(v, r) => (v, r),
+                        VOConstitudeResultMut::Invalid(v, r) => (v, r),
+                        VOConstitudeResultMut::Error(e) => return VOConstitudeResultMut::Error(e),
+                    };
+                )*
+
+                let return_object = $struct_name::from_member_mut($($member,)*);
+
+                use crate::types::repr_u8::VOWrapU8Array;
+                if return_object.is_sanity() {
+                    VOConstitudeResultMut::Valid(return_object, remain)
+                } else {
+                    VOConstitudeResultMut::Invalid(return_object, remain)
+                }
+            }
+        }
+
+    };
 }
+
+define_composition_vo!(
+    pub struct ElfHeader {
+        [pub] e_ident: ElfMagic,
+        [pub] e_type: ElfType,
+        [pub] e_machine: ElfMachine,
+        [pub] e_version: ElfVersion,
+    }
+);
 
 #[cfg(test)]
 mod tests {
