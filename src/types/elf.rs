@@ -1,5 +1,11 @@
-use super::repr_u8::{Cu16, Cu32, Cu8, ReprCArray};
+use super::repr_u8::{Csize, Cu16, Cu32, Cu8, ReprCArray};
 use crate::{define_composition_vo, define_enchanted_type};
+
+macro_rules! helper_get_first_tt {
+    ($first: tt, $($e: tt,)*) => {
+        $first
+    };
+}
 
 define_enchanted_type!(ElfMagic, ReprCArray<Cu8, 16>, );
 
@@ -216,11 +222,9 @@ define_enchanted_type!(
 #define EV_NUM		2
 );
 
-macro_rules! helper_get_first_tt {
-    ($first: tt, $($e: tt,)*) => {
-        $first
-    };
-}
+define_enchanted_type!(ElfEntry, Csize,); // FIXME: replace Display
+define_enchanted_type!(ElfProgramHeaderOffset, Csize,);
+define_enchanted_type!(ElfFlags, Cu32,);
 
 define_composition_vo!(
     pub struct ElfHeader {
@@ -228,6 +232,7 @@ define_composition_vo!(
         [pub] e_type: ElfType,
         [pub] e_machine: ElfMachine,
         [pub] e_version: ElfVersion,
+        [pub] e_shoff: ElfEntry,
     }
 );
 
@@ -247,6 +252,7 @@ impl core::fmt::Display for ElfHeader {
         writeln!(fmt, "type:\t\t{}", self.e_type)?;
         writeln!(fmt, "machine:\t{}", self.e_machine)?;
         writeln!(fmt, "version:\t{}", self.e_version)?;
+        writeln!(fmt, "entry:\t{:?}", self.e_shoff)?;
 
         Ok(())
     }

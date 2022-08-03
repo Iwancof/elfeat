@@ -5,12 +5,12 @@ use crate::types::repr_u8::{VOConstitudeResultMut, VOWrapU8ArrayMut};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BinaryWrapper {
-    binary: Vec<u8>,
+    pub binary: Vec<u8>,
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterpretMut<'a, T> {
     offset: usize,
-    inner: &'a mut T,
+    pub inner: &'a mut T,
 }
 impl<T> core::fmt::Display for InterpretMut<'_, T>
 where

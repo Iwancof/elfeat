@@ -7,7 +7,7 @@ pub mod file;
 pub mod types;
 
 use file::*;
-use types::elf::ElfHeader;
+use types::elf::*;
 
 use std::fs::File;
 
@@ -22,4 +22,8 @@ fn main() {
         .unwrap_no_head_validity();
 
     println!("{}", v);
+
+    let mut file = File::create("./bin/out").unwrap();
+    use std::io::Write;
+    file.write_all(bw.binary.as_ref()).unwrap();
 }

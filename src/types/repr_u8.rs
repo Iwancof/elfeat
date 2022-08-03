@@ -188,4 +188,6 @@ define_prim_type_mem_repr!(Ci32, i32);
 define_prim_type_mem_repr!(Ci64, i64);
 define_prim_type_mem_repr!(Cchar, libc::c_char);
 
+define_prim_type_mem_repr!(Csize, usize);
+
 // TODO: exmaple implementation for uleb128
