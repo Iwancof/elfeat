@@ -1,6 +1,3 @@
-#![feature(const_slice_from_raw_parts_mut)]
-#![feature(const_mut_refs)]
-
 extern crate libc;
 
 pub mod file;

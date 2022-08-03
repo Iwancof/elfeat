@@ -79,8 +79,8 @@ macro_rules! define_composition_vo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::elf::ElfHeader;
-    use crate::types::repr_u8::{Cu8, ReprCArray};
+    use crate::types::elf::*;
+    use crate::types::repr_u8::*;
 
     #[test]
     fn make_composition_ref() {
@@ -91,14 +91,18 @@ mod tests {
             e_type: ElfType::ET_EXEC,
             e_machine: ElfMachine::EM_SH,
             e_version: ElfVersion::EV_NONE,
+            e_shoff: ElfEntry {
+                inner: Csize::from_inner(0),
+            },
         };
 
         let i = &mut original.e_ident;
         let t = &mut original.e_type;
         let m = &mut original.e_machine;
         let v = &mut original.e_version;
+        let s = &mut original.e_shoff;
 
-        let r = ElfHeader::from_member_mut(i, t, m, v);
+        let r = ElfHeader::from_member_mut(i, t, m, v, s);
 
         assert_eq!(
             r.e_ident,
@@ -109,5 +113,11 @@ mod tests {
         assert_eq!(r.e_type, ElfType::ET_EXEC);
         assert_eq!(r.e_machine, ElfMachine::EM_SH);
         assert_eq!(r.e_version, ElfVersion::EV_NONE);
+        assert_eq!(
+            r.e_shoff,
+            ElfEntry {
+                inner: Csize::from_inner(0)
+            }
+        );
     }
 }
