@@ -1,11 +1,3 @@
-use super::elf::{ElfMachine, ElfMagic, ElfType, ElfVersion};
-
-macro_rules! helper_get_first_tt {
-    ($first: tt, $($e: tt,)*) => {
-        $first
-    };
-}
-
 #[macro_export]
 macro_rules! define_composition_vo {
     ($($struct_vis: tt)? struct $struct_name: ident {
@@ -84,18 +76,10 @@ macro_rules! define_composition_vo {
     };
 }
 
-define_composition_vo!(
-    pub struct ElfHeader {
-        [pub] e_ident: ElfMagic,
-        [pub] e_type: ElfType,
-        [pub] e_machine: ElfMachine,
-        [pub] e_version: ElfVersion,
-    }
-);
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::elf::ElfHeader;
     use crate::types::repr_u8::{Cu8, ReprCArray};
 
     #[test]

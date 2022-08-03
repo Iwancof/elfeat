@@ -12,6 +12,21 @@ pub struct InterpretMut<'a, T> {
     offset: usize,
     inner: &'a mut T,
 }
+impl<T> core::fmt::Display for InterpretMut<'_, T>
+where
+    T: core::fmt::Display,
+{
+    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            fmt,
+            "{} at {}. contents: \n{}",
+            core::any::type_name::<T>(),
+            self.offset,
+            self.inner
+        )
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterpretRef<'a, T> {
     offset: usize,

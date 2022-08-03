@@ -28,6 +28,18 @@ macro_rules! define_enchanted_type {
             pub inner: $inner_type,
         }
 
+        impl core::convert::AsMut<$inner_type> for $name {
+            fn as_mut(&mut self) -> &mut $inner_type {
+                &mut self.inner
+            }
+        }
+        impl core::convert::AsRef<$inner_type> for $name {
+            fn as_ref(&self) -> &$inner_type {
+                &self.inner
+            }
+        }
+
+
         $(impl $name {
             #[allow(unused)]
             pub const $cons: Self = Self { inner: $val };

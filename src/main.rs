@@ -7,7 +7,7 @@ pub mod file;
 pub mod types;
 
 use file::*;
-use types::composition::ElfHeader;
+use types::elf::ElfHeader;
 
 use std::fs::File;
 
@@ -21,5 +21,5 @@ fn main() {
         .interpret_next_mut::<ElfHeader>()
         .unwrap_no_head_validity();
 
-    println!("{:?}", v);
+    println!("{}", v);
 }

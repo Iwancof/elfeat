@@ -73,6 +73,17 @@ impl<T, const N: usize> ReprCArray<T, N> {
     }
 }
 
+impl<T, const N: usize> AsMut<[T; N]> for ReprCArray<T, N> {
+    fn as_mut(&mut self) -> &mut [T; N] {
+        &mut self.inner
+    }
+}
+impl<T, const N: usize> AsRef<[T; N]> for ReprCArray<T, N> {
+    fn as_ref(&self) -> &[T; N] {
+        &self.inner
+    }
+}
+
 pub enum VOConstitudeResult<'a, T> {
     Valid(&'a T, &'a [u8]),
     Invalid(&'a T, &'a [u8]),

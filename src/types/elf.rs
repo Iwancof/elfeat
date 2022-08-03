@@ -1,5 +1,5 @@
 use super::repr_u8::{Cu16, Cu32, Cu8, ReprCArray};
-use crate::define_enchanted_type;
+use crate::{define_composition_vo, define_enchanted_type};
 
 define_enchanted_type!(ElfMagic, ReprCArray<Cu8, 16>, );
 
@@ -215,3 +215,39 @@ define_enchanted_type!(
 #define EV_CURRENT	1
 #define EV_NUM		2
 );
+
+macro_rules! helper_get_first_tt {
+    ($first: tt, $($e: tt,)*) => {
+        $first
+    };
+}
+
+define_composition_vo!(
+    pub struct ElfHeader {
+        [pub] e_ident: ElfMagic,
+        [pub] e_type: ElfType,
+        [pub] e_machine: ElfMachine,
+        [pub] e_version: ElfVersion,
+    }
+);
+
+impl core::fmt::Display for ElfHeader {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(fmt, "ident:\t\t[")?;
+        for c in self.e_ident.as_ref().as_ref() {
+            let v = c.into_inner();
+            if v.is_ascii_alphanumeric() {
+                write!(fmt, "{}, ", v as char)?;
+            } else {
+                write!(fmt, "{}, ", v)?;
+            }
+        }
+        write!(fmt, "]\n")?;
+
+        writeln!(fmt, "type:\t\t{}", self.e_type)?;
+        writeln!(fmt, "machine:\t{}", self.e_machine)?;
+        writeln!(fmt, "version:\t{}", self.e_version)?;
+
+        Ok(())
+    }
+}
