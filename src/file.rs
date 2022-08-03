@@ -267,56 +267,6 @@ impl<'a> BinarySliceMut<'a> {
     }
 }
 
-/*
-    pub fn interpret_at<'a, T>(&'a mut self, at: usize) -> InterpretRef<'a, T>
-    where
-        T: VOWrapU8ArrayRef,
-    {
-        let size = std::mem::size_of::<T>();
-
-        let left = at;
-        let right = left + size;
-
-        let current_ptr = self.binary[left..right].as_mut_ptr();
-        let ret_ref = unsafe { std::mem::transmute(current_ptr) };
-
-        InterpretRef {
-            offset: self.current_pos,
-            inner: ret_ref,
-        }
-    }
-    pub fn interpret_next<'a, T>(&'a mut self) -> InterpretRef<'a, T> {
-        let size = std::mem::size_of::<T>();
-
-        let at = self.current_pos;
-        self.current_pos += size;
-
-        self.interpret_at(at)
-    }
-
-    pub fn write_back_obj<T>(&mut self, obj: InterpretObj<T>) -> ()
-    where
-        T: Copy,
-    {
-        // is result need?
-        let size = std::mem::size_of::<T>();
-        let at = obj.offset;
-
-        assert!(at + size <= self.size);
-
-        let left = at;
-        let right = left + size;
-
-        let dest = self.binary[left..right].as_mut_ptr();
-        let from = &obj.inner as *const _ as *const u8;
-
-        unsafe {
-            std::ptr::copy(from, dest, size);
-        }
-    }
-}
-*/
-
 #[cfg(test)]
 mod tests {
     use super::*;
