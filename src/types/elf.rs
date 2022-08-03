@@ -227,7 +227,7 @@ define_enchanted_type!(ElfProgramHeaderOffset, Csize,);
 define_enchanted_type!(ElfFlags, Cu32,);
 
 define_composition_vo!(
-    pub struct ElfHeader {
+    [pub] struct ElfHeader {
         [pub] e_ident: ElfMagic,
         [pub] e_type: ElfType,
         [pub] e_machine: ElfMachine,

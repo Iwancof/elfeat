@@ -1,6 +1,12 @@
+macro_rules! helper_get_first_tt {
+    ($first: tt, $($e: tt,)*) => {
+        $first
+    };
+}
+
 #[macro_export]
 macro_rules! define_composition_vo {
-    ($($struct_vis: tt)? struct $struct_name: ident {
+    ($([$struct_vis: tt])? struct $struct_name: ident {
         $($([$vis: tt])? $member: ident: $member_type: ty,)*
             // FIXME
     }) => {
@@ -11,6 +17,7 @@ macro_rules! define_composition_vo {
         }
 
         impl $struct_name {
+            #[allow(unused)]
             pub fn from_member_mut<'a>(
                 $($member: &'a mut $member_type),*
             ) -> &'a mut $struct_name {
@@ -30,18 +37,53 @@ macro_rules! define_composition_vo {
 
                 $(
                     assert_eq!(
-                        &mut ret.$member, $member
+                        &mut ret.$member as *mut $member_type as usize, $member as *mut $member_type as usize
                     );
                 )*
 
                 ret
             }
 
+            #[allow(unused)]
             fn from_member_mut_ptr(
                 $(#[allow(unused)] $member: *mut $member_type),*
             ) -> *mut Self {
                 helper_get_first_tt!($($member, )*) as *mut helper_get_first_tt!($($member_type,)*) as *mut Self
             }
+
+            #[allow(unused)]
+            pub fn from_member_ref<'a>(
+                $($member: &'a $member_type),*
+            ) -> &'a $struct_name {
+                use memoffset::offset_of;
+                let ret_ptr = Self::from_member_ptr($($member),*) as usize;
+
+                $(
+                    assert_eq!(
+                        ret_ptr + offset_of!($struct_name, $member),
+                        ($member as *const $member_type as usize)
+                    );
+                )*
+
+                let ret = unsafe { &*(ret_ptr as *const Self) };
+
+                $(
+                    // It can be replaced with debug_assert_eq.
+                    assert_eq!(
+                        &ret.$member as *const $member_type as usize, $member as *const $member_type as usize
+                    );
+                )*
+
+                ret
+            }
+
+            #[allow(unused)]
+            fn from_member_ptr(
+                $(#[allow(unused)] $member: *const $member_type),*
+            ) -> *const Self {
+                helper_get_first_tt!($($member, )*) as *mut helper_get_first_tt!($($member_type,)*) as *const Self
+            }
+
         }
 
         impl crate::types::repr_u8::VOWrapU8Array for $struct_name {
@@ -82,42 +124,40 @@ mod tests {
     use crate::types::elf::*;
     use crate::types::repr_u8::*;
 
+    define_composition_vo!(
+        struct MockComposition {
+            e_type: ElfType,
+            e_machine: ElfMachine,
+            e_version: ElfVersion,
+        }
+    );
+
     #[test]
     fn make_composition_ref() {
-        let mut original = ElfHeader {
-            e_ident: ElfMagic {
-                inner: ReprCArray::new([Cu8::from_inner(0); 16]),
-            },
+        let mut original = MockComposition {
             e_type: ElfType::ET_EXEC,
             e_machine: ElfMachine::EM_SH,
             e_version: ElfVersion::EV_NONE,
-            e_shoff: ElfEntry {
-                inner: Csize::from_inner(0),
-            },
         };
 
-        let i = &mut original.e_ident;
         let t = &mut original.e_type;
         let m = &mut original.e_machine;
         let v = &mut original.e_version;
-        let s = &mut original.e_shoff;
 
-        let r = ElfHeader::from_member_mut(i, t, m, v, s);
+        let r = MockComposition::from_member_mut(t, m, v);
 
-        assert_eq!(
-            r.e_ident,
-            ElfMagic {
-                inner: ReprCArray::new([Cu8::from_inner(0); 16]),
-            }
-        );
         assert_eq!(r.e_type, ElfType::ET_EXEC);
         assert_eq!(r.e_machine, ElfMachine::EM_SH);
         assert_eq!(r.e_version, ElfVersion::EV_NONE);
-        assert_eq!(
-            r.e_shoff,
-            ElfEntry {
-                inner: Csize::from_inner(0)
-            }
-        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn mismatch_reference() {
+        let v = Box::leak(Box::new(ElfVersion::EV_NONE));
+        let m = Box::leak(Box::new(ElfMachine::EM_SH));
+        let t = Box::leak(Box::new(ElfType::ET_EXEC));
+
+        let _r = MockComposition::from_member_mut(t, m, v);
     }
 }
