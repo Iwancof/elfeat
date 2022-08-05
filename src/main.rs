@@ -1,3 +1,5 @@
+#![feature(concat_idents)]
+
 extern crate libc;
 
 pub mod file;

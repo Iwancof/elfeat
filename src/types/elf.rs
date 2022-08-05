@@ -1,12 +1,6 @@
 use super::repr_u8::{Csize, Cu16, Cu32, Cu8, ReprCArray};
 use crate::{define_composition_vo, define_enchanted_type};
 
-macro_rules! helper_get_first_tt {
-    ($first: tt, $($e: tt,)*) => {
-        $first
-    };
-}
-
 define_enchanted_type!(ElfMagic, ReprCArray<Cu8, 16>, );
 
 define_enchanted_type!(
