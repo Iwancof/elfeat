@@ -21,33 +21,36 @@ macro_rules! define_composition_vo {
             #[allow(unused)]
             pub fn from_member_mut<'a>(
                 $($member: &'a mut $member_type),*
-            ) -> &'a mut $struct_name {
+            ) -> Option<&'a mut $struct_name> {
                 paste::paste! {
                     let ret_ptr = Self::from_member_mut_ptr($($member),*) as usize;
 
                     $(
-                        core::assert_eq!(
-                            ret_ptr + memoffset::offset_of!($struct_name, $member),
-                            ($member as *mut $member_type as usize)
-                        );
+                        if ret_ptr + memoffset::offset_of!($struct_name, $member) !=  ($member as *mut $member_type as usize) {
+                            return None;
+                        }
                     )*
 
                     $(
-                            let [<$member val>]: usize = $member as *mut $member_type as usize;
-                            drop($member);
+                            let [<address_of_ $member>]: usize = $member as *mut $member_type as usize; // to address value.
+                            drop($member); // reference is dropped.
                     )*
-
 
                     // Safety: Probably ok
+                    // memory range of $member(s) has 0 &mut reference. so, creating &mut Self is
+                    // valid.
+                    // And, by strict aliasing rules we can only treat $member as $member_type, and
+                    // Self's layout is same. so, this is not undefined behavior.   ... I think.
                     let ret = unsafe { &mut *(ret_ptr as *mut Self) };
 
+
                     $(
-                        core::assert_eq!(
-                            &mut ret.$member as *mut $member_type as usize, [<$member val>] as *mut $member_type as usize
+                        core::debug_assert_eq!(
+                            &mut ret.$member as *mut $member_type as usize, [<address_of_ $member>]
                         );
                     )*
 
-                    ret
+                    return Some(ret);
                 }
             }
 
@@ -62,32 +65,43 @@ macro_rules! define_composition_vo {
             pub fn from_member_ref<'a>(
                 $($member: &'a $member_type),*
             ) -> &'a $struct_name {
-                let ret_ptr = Self::from_member_ptr($($member),*) as usize;
+                paste::paste!{
+                    let ret_ptr = Self::from_member_ptr($($member),*) as usize;
 
-                $(
-                    core::assert_eq!(
-                        ret_ptr + memoffset::offset_of!($struct_name, $member),
-                        ($member as *const $member_type as usize)
-                    );
-                )*
+                    $(
+                        core::assert_eq!(
+                            ret_ptr + memoffset::offset_of!($struct_name, $member),
+                            ($member as *const $member_type as usize)
+                        );
+                    )*
+                    $(
+                        let [<address_of_ $member>]: usize = $member as *const $member_type as usize;
+                        drop($member);
+                    )*
 
-                let ret = unsafe { &*(ret_ptr as *const Self) };
+                    // Safety: Probably ok
+                    // memory range of $member(s) has 0 &mut reference. so, creating &mut Self is
+                    // valid.
+                    // And, by strict aliasing rules we can only treat $member as $member_type, and
+                    // Self's layout is same. so, this is not undefined behavior.   ... I think.
+                    let ret = unsafe { &*(ret_ptr as *const Self) };
 
-                $(
-                    // It can be replaced with debug_assert_eq.
-                    core::assert_eq!(
-                        &ret.$member as *const $member_type as usize, $member as *const $member_type as usize
-                    );
-                )*
+                    $(
+                        // It can be replaced with debug_assert_eq.
+                        core::debug_assert_eq!(
+                            &ret.$member as *const $member_type as usize, [<address_of_ $member>]
+                        );
+                    )*
 
-                ret
+                    ret
+                }
             }
 
             #[allow(unused)]
             fn from_member_ptr(
                 $(#[allow(unused)] $member: *const $member_type),*
             ) -> *const Self {
-                helper_get_first_tt!($($member, )*) as *mut helper_get_first_tt!($($member_type,)*) as *const Self
+                helper_get_first_tt!($($member, )*) as *const helper_get_first_tt!($($member_type,)*) as *const Self
             }
 
         }
@@ -110,7 +124,7 @@ macro_rules! define_composition_vo {
                     };
                 )*
 
-                let return_object = $struct_name::from_member_mut($($member,)*);
+                let return_object = $struct_name::from_member_mut($($member,)*).unwrap();
 
                 use crate::types::repr_u8::VOWrapU8Array;
                 if return_object.is_sanity() {
@@ -148,7 +162,7 @@ mod tests {
         let m = &mut original.e_machine;
         let v = &mut original.e_version;
 
-        let r = MockComposition::from_member_mut(t, m, v);
+        let r = MockComposition::from_member_mut(t, m, v).unwrap();
 
         assert_eq!(r.e_type, ElfType::ET_EXEC);
         assert_eq!(r.e_machine, ElfMachine::EM_SH);
@@ -162,7 +176,7 @@ mod tests {
         let m = Box::leak(Box::new(ElfMachine::EM_SH));
         let t = Box::leak(Box::new(ElfType::ET_EXEC));
 
-        let _r = MockComposition::from_member_mut(t, m, v);
+        let _r = MockComposition::from_member_mut(t, m, v).unwrap();
     }
 
     #[test]
@@ -177,7 +191,7 @@ mod tests {
         let m = &mut original.e_machine;
         let v = &mut original.e_version;
 
-        let r = MockComposition::from_member_mut(t, m, v);
+        let r = MockComposition::from_member_mut(t, m, v).unwrap();
 
         let composed_address = r as *mut MockComposition as *mut u8;
         let original_address = t as *mut ElfType as *mut u8;
