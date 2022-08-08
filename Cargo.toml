@@ -6,9 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bincode = "*"
-serde = {version = "*", features = ["derive"]}
-libc = "*"
-ref-cast = "1.0.8"
-memoffset = "0.6.5"
-paste = "1.0.7"
+array-macro = "2.1.5"

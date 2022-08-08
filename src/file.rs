@@ -1,7 +1,14 @@
+/*
+
 use std::fs::File;
 use std::io::Read;
 
 use crate::types::repr_u8::{VOConstitudeResultMut, VOWrapU8ArrayMut};
+
+trait FileWrapper {
+    fn read(&self, start: usize, len: usize) -> &[u8];
+    fn write(&mut self, start: usize, data: &[u8]);
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BinaryWrapper {
@@ -175,7 +182,7 @@ impl<'a> BinarySliceMut<'a> {
     /// split into 3 chunks.
     /// +-----
     /// |0 1 2 3 4 5 6 7 8 9 |
-    ///      ^at1=2  ^at2=6  
+    ///      ^at1=2  ^at2=6
     /// result: ([0, 1], [2, 3, 4, 5], [6, 7, 8, 9])
     ///
     fn split_at_2_mut(
@@ -331,3 +338,4 @@ mod tests {
         );
     }
 }
+*/

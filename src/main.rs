@@ -1,16 +1,13 @@
-#![feature(pointer_is_aligned)]
-
-extern crate libc;
+#![feature(split_array)]
+#![feature(maybe_uninit_uninit_array)]
 
 pub mod file;
 pub mod types;
 
-use file::*;
-use types::elf::*;
-
 use std::fs::File;
 
 fn main() {
+    /*
     let file = File::open("./bin/main").unwrap();
 
     let mut bw = BinaryWrapper::from_file(file);
@@ -26,4 +23,5 @@ fn main() {
     let mut file = File::create("./bin/out").unwrap();
     use std::io::Write;
     file.write_all(bw.binary.as_ref()).unwrap();
+    */
 }
