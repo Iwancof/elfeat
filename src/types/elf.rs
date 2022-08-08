@@ -253,7 +253,8 @@ define_composed_type!(
         e_machine: ElfMachine,
         e_version: ElfVersion,
         e_shoff: ElfEntry,
-    }
+    },
+    display_implementation = true
 );
 
 /*
