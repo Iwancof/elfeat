@@ -1,12 +1,16 @@
-use super::repr_u8::{Csize, Cu16, Cu32, Cu8, ReprCArray};
-use crate::{define_composition_vo, define_enchanted_type};
+use super::Array;
+use crate::{define_composed_type, define_model_type};
 
-define_enchanted_type!(ElfMagic, ReprCArray<Cu8, 16>, );
+define_model_type!(
+    #[derive(PartialEq, Eq)]
+    struct ElfMagic(Array<u8, 16>), []
+);
 
-define_enchanted_type!(
-    ElfType,
-    Cu16,
-    Cu16::from_inner,
+define_model_type!(
+    #[derive(PartialEq, Eq)]
+    struct ElfType(u16),
+    pub
+    [
 #define ET_NONE		0
 #define ET_REL		1
 #define ET_EXEC		2
@@ -17,12 +21,14 @@ define_enchanted_type!(
 #define ET_HIOS		0xfeff
 #define ET_LOPROC	0xff00
 #define ET_HIPROC	0xffff
+    ]
 );
 
-define_enchanted_type! (
-    ElfMachine,
-    Cu16,
-    Cu16::from_inner,
+define_model_type!(
+    #[derive(PartialEq, Eq)]
+    struct ElfMachine(u16),
+    pub
+    [
 #define EM_NONE		 0
 #define EM_M32		 1
 #define EM_SPARC	 2
@@ -205,17 +211,26 @@ define_enchanted_type! (
 #define EM_CSKY		252
 #define EM_NUM		253
 #define EM_ALPHA	0x9026
+    ]
 );
 
-define_enchanted_type!(
-    ElfVersion,
-    Cu32,
-    Cu32::from_inner,
+define_model_type!(
+    #[derive(PartialEq, Eq)]
+    struct ElfVersion(u32),
+    pub
+    [
 #define EV_NONE		0
 #define EV_CURRENT	1
 #define EV_NUM		2
+    ]
 );
 
+define_model_type!(
+    #[derive(PartialOrd, Ord, PartialEq, Eq)]
+    struct ElfEntry(usize),
+    []
+);
+/*
 define_enchanted_type!(ElfEntry, Csize,); // FIXME: replace Display
 define_enchanted_type!(ElfProgramHeaderOffset, Csize,);
 define_enchanted_type!(ElfFlags, Cu32,);
@@ -229,7 +244,19 @@ define_composition_vo!(
         [pub] e_shoff: ElfEntry,
     }
 );
+*/
 
+define_composed_type!(
+    struct ElfHeader {
+        e_ident: ElfMagic,
+        e_type: ElfType,
+        e_machine: ElfMachine,
+        e_version: ElfVersion,
+        e_shoff: ElfEntry,
+    }
+);
+
+/*
 impl core::fmt::Display for ElfHeader {
     fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(fmt, "ident:\t\t[")?;
@@ -251,3 +278,4 @@ impl core::fmt::Display for ElfHeader {
         Ok(())
     }
 }
+*/

@@ -1,6 +1,6 @@
-use super::{FromU8Array, FromU8Error};
+use super::{Array, FromU8Array, FromU8Error};
 
-impl<T, const N: usize> FromU8Array for [T; N]
+impl<T, const N: usize> FromU8Array for Array<T, N>
 where
     T: FromU8Array,
 {
@@ -25,12 +25,12 @@ where
             } ; N
         ];
 
-        Ok((total, s))
+        Ok((total, Self(s)))
     }
     fn to_slice(&self) -> Box<[u8]> {
         let mut ret = Vec::new();
 
-        for obj in self {
+        for obj in &self.0 {
             ret.extend_from_slice(&obj.to_slice());
         }
 
@@ -78,16 +78,16 @@ pub mod tests {
     #[test]
     fn array_i32_from_slice_ok() {
         let mut slice: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let val = <[i32; 2]>::from_slice_consume(&mut slice).expect("convertion error");
+        let val = <Array<i32, 2>>::from_slice_consume(&mut slice).expect("convertion error");
 
-        assert_eq!(val, [0x04030201, 0x08070605]);
+        assert_eq!(val, [0x04030201, 0x08070605].into());
         assert_eq!(slice, &[9, 10]);
     }
 
     #[test]
     fn array_i32_from_slice_length_error() {
         let mut slice: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let err = <[i32; 3]>::from_slice_consume(&mut slice).expect_err("expected error");
+        let err = <Array<i32, 3>>::from_slice_consume(&mut slice).expect_err("expected error");
 
         assert_eq!(err, FromU8Error::NotEnoughSlice);
     }
@@ -95,7 +95,7 @@ pub mod tests {
     #[test]
     fn array_u32_to_slice_change() {
         let mut slice: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let mut val = <[u32; 2]>::from_slice_consume(&mut slice).expect("convertion error");
+        let mut val = <Array<u32, 2>>::from_slice_consume(&mut slice).expect("convertion error");
 
         val[0] = 0xf1f2f3f4;
         val[1] = 0xf5f6f7f8;
@@ -142,3 +142,6 @@ impl_f8a_le_bytes!(u16);
 impl_f8a_le_bytes!(u32);
 impl_f8a_le_bytes!(u64);
 impl_f8a_le_bytes!(u128);
+
+impl_f8a_le_bytes!(usize);
+impl_f8a_le_bytes!(isize);

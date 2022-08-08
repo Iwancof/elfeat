@@ -1,5 +1,34 @@
-pub mod model;
+pub mod elf;
 pub mod primitive;
+
+#[macro_use]
+pub mod model;
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Array<T, const N: usize>([T; N]);
+
+impl<T, const N: usize> From<Array<T, N>> for [T; N] {
+    fn from(x: Array<T, N>) -> Self {
+        x.0
+    }
+}
+impl<T, const N: usize> From<[T; N]> for Array<T, N> {
+    fn from(x: [T; N]) -> Self {
+        Self(x)
+    }
+}
+impl<T, const N: usize> core::ops::Index<usize> for Array<T, N> {
+    type Output = T;
+
+    fn index(&self, idx: usize) -> &T {
+        &self.0[idx]
+    }
+}
+impl<T, const N: usize> core::ops::IndexMut<usize> for Array<T, N> {
+    fn index_mut(&mut self, idx: usize) -> &mut T {
+        &mut self.0[idx]
+    }
+}
 
 /// Error type of represent from u8.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
