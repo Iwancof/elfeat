@@ -1,27 +1,41 @@
-/// Error type of represent from u8.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FromU8Error<T> {
-    /// The slice is too short to represent.
-    NotEnoughSlice,
+use super::{FromU8Array, FromU8Error};
 
-    /// The slice is invalid to represent.
-    /// If you want to return a value regardless of success, return Some,
-    InvalidValue(Option<T>),
-}
-
-pub trait FromU8Array
+impl<T, const N: usize> FromU8Array for [T; N]
 where
-    Self: Sized,
+    T: FromU8Array,
 {
-    /// Read from slice and slide pointer.
-    /// If this returns err(_), slice will not be changed.
-    fn from_slice_consume(slice: &mut &[u8]) -> Result<Self, FromU8Error<Self>> {
-        let (read, obj) = Self::from_slice(slice)?;
-        *slice = &slice[read..];
-        Ok(obj)
+    fn from_slice(mut slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>> {
+        use array_macro::array;
+        let mut total = 0;
+
+        let s = array![
+            _ => {
+                let (read, t) = T::from_slice(slice).map_err(|e| {
+                    match e {
+                        FromU8Error::NotEnoughSlice => FromU8Error::NotEnoughSlice,
+                        FromU8Error::InvalidValue(_) => FromU8Error::InvalidValue(None),
+                        // FIXME return some value.
+                    }
+                })?;
+
+                total += read;
+                slice = &slice[read..];
+
+                t
+            } ; N
+        ];
+
+        Ok((total, s))
     }
-    fn from_slice(slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>>;
-    fn to_slice(&self) -> Box<[u8]>;
+    fn to_slice(&self) -> Box<[u8]> {
+        let mut ret = Vec::new();
+
+        for obj in self {
+            ret.extend_from_slice(&obj.to_slice());
+        }
+
+        ret.into_boxed_slice()
+    }
 }
 
 #[cfg(test)]
@@ -95,10 +109,13 @@ pub mod tests {
     }
 }
 
+#[macro_export]
 macro_rules! impl_f8a_le_bytes {
     ($t: ty) => {
-        impl FromU8Array for $t {
-            fn from_slice(slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>> {
+        impl crate::types::FromU8Array for $t {
+            fn from_slice(slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
+                use crate::types::FromU8Error;
+
                 if slice.len() < core::mem::size_of::<Self>() {
                     return Err(FromU8Error::NotEnoughSlice);
                 }
@@ -125,41 +142,3 @@ impl_f8a_le_bytes!(u16);
 impl_f8a_le_bytes!(u32);
 impl_f8a_le_bytes!(u64);
 impl_f8a_le_bytes!(u128);
-
-impl<T, const N: usize> FromU8Array for [T; N]
-where
-    T: FromU8Array,
-{
-    fn from_slice(mut slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>> {
-        use array_macro::array;
-        let mut total = 0;
-
-        let s = array![
-            _ => {
-                let (read, t) = T::from_slice(slice).map_err(|e| {
-                    match e {
-                        FromU8Error::NotEnoughSlice => FromU8Error::NotEnoughSlice,
-                        FromU8Error::InvalidValue(_) => FromU8Error::InvalidValue(None),
-                        // FIXME return some value.
-                    }
-                })?;
-
-                total += read;
-                slice = &slice[read..];
-
-                t
-            } ; N
-        ];
-
-        Ok((total, s))
-    }
-    fn to_slice(&self) -> Box<[u8]> {
-        let mut ret = Vec::new();
-
-        for obj in self {
-            ret.extend_from_slice(&obj.to_slice());
-        }
-
-        ret.into_boxed_slice()
-    }
-}

@@ -1,12 +1,69 @@
-use super::primitive::{FromU8Array, FromU8Error};
+use super::FromU8Array;
 
 pub trait ModelFromU8Array: FromU8Array {
     fn is_sanity(&self) -> bool;
 }
 
+macro_rules! define_model_type {
+    (
+    $(#[$struct_meta:meta])*
+    $vis: vis struct $struct_name: ident ( $inner_type: ty ) ; [$( $mvis: vis ($name: ident: $val: expr),)*]) => {
+        #[repr(transparent)]
+        $(#[$struct_meta])*
+        $vis struct $struct_name($inner_type);
+
+        impl $struct_name {
+            $(
+            $mvis const $name: Self = Self($val);
+            )*
+        }
+
+        impl ModelFromU8Array for $struct_name {
+            fn is_sanity(&self) -> bool {
+                $(
+                    if self == &Self::$name {
+                        return true;
+                    }
+                )*
+                return false;
+            }
+        }
+
+        impl Into<$inner_type> for $struct_name {
+            fn into(self) -> $inner_type {
+                self.0
+            }
+        }
+        impl Into<$struct_name> for $inner_type {
+            fn into(self) -> $struct_name {
+                $struct_name(self)
+            }
+        }
+
+        impl crate::types::FromU8Array for $struct_name {
+            fn from_slice(slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
+                match <$inner_type>::from_slice(slice) {
+                    Ok((read, x)) => Ok((read, Self(x))),
+                    Err(e) => Err(e.into()),
+                }
+            }
+            fn to_slice(&self) -> Box<[u8]> {
+                self.0.to_slice()
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
+    use super::super::*;
     use super::*;
+
+    define_model_type!(
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    struct MockModel(i32); [
+        (VAL: 0),
+    ]);
 
     #[derive(Debug)]
     struct MockType {
