@@ -1,4 +1,4 @@
-#![feature(concat_idents)]
+#![feature(pointer_is_aligned)]
 
 extern crate libc;
 
@@ -16,9 +16,10 @@ fn main() {
     let mut bw = BinaryWrapper::from_file(file);
     let mut slice = bw.to_mut_slice();
 
-    let (v, _) = slice
-        .interpret_next_mut::<ElfHeader>()
-        .unwrap_no_head_validity();
+    let (_h, v, _) = slice
+        .interpret_relat_mut::<ElfHeader>(0)
+        .ignore_validity()
+        .unwrap();
 
     println!("{}", v);
 

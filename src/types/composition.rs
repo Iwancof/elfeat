@@ -12,6 +12,7 @@ macro_rules! define_composition_vo {
             // FIXME
     }) => {
         #[repr(C)]
+        #[repr(align(4))]
         #[derive(Debug, Clone, PartialEq, Eq)]
         $($struct_vis)? struct $struct_name {
             $($($vis)? $member: $member_type),*
@@ -23,10 +24,17 @@ macro_rules! define_composition_vo {
                 $($member: &'a mut $member_type),*
             ) -> Option<&'a mut $struct_name> {
                 paste::paste! {
-                    let ret_ptr = Self::from_member_mut_ptr($($member),*) as usize;
+                    let ret_ptr = Self::from_member_mut_ptr($($member),*);
+                    let align = core::mem::align_of::<$struct_name>();
+
+                    if !ret_ptr.is_aligned_to(align) {
+                        // return None;
+                    };
+
+                    let ret_ptr = ret_ptr as usize;
 
                     $(
-                        if ret_ptr + memoffset::offset_of!($struct_name, $member) !=  ($member as *mut $member_type as usize) {
+                        if ret_ptr + memoffset::offset_of!($struct_name, $member) != ($member as *mut $member_type as usize) {
                             return None;
                         }
                     )*
@@ -37,12 +45,11 @@ macro_rules! define_composition_vo {
                     )*
 
                     // Safety: Probably ok
-                    // memory range of $member(s) has 0 &mut reference. so, creating &mut Self is
+                    // memory range of $member(s) has 0 &mut reference. and align is ok. so, creating &mut Self is
                     // valid.
                     // And, by strict aliasing rules we can only treat $member as $member_type, and
                     // Self's layout is same. so, this is not undefined behavior.   ... I think.
                     let ret = unsafe { &mut *(ret_ptr as *mut Self) };
-
 
                     $(
                         core::debug_assert_eq!(
@@ -64,23 +71,30 @@ macro_rules! define_composition_vo {
             #[allow(unused)]
             pub fn from_member_ref<'a>(
                 $($member: &'a $member_type),*
-            ) -> &'a $struct_name {
+            ) -> Option<&'a $struct_name> {
                 paste::paste!{
-                    let ret_ptr = Self::from_member_ptr($($member),*) as usize;
+                    let ret_ptr = Self::from_member_ptr($($member),*);
+                    let align = core::mem::align_of::<$struct_name>();
+
+                    if !ret_ptr.is_aligned_to(align) {
+                        return None;
+                    };
+
+                    let ret_ptr = ret_ptr as usize;
 
                     $(
-                        core::assert_eq!(
-                            ret_ptr + memoffset::offset_of!($struct_name, $member),
-                            ($member as *const $member_type as usize)
-                        );
+                        if ret_ptr + memoffset::offset_of!($struct_name, $member) != ($member as *const $member_type as usize) {
+                            return None;
+                        }
                     )*
+
                     $(
                         let [<address_of_ $member>]: usize = $member as *const $member_type as usize;
                         drop($member);
                     )*
 
                     // Safety: Probably ok
-                    // memory range of $member(s) has 0 &mut reference. so, creating &mut Self is
+                    // memory range of $member(s) has 0 &mut reference. and align is ok. so, creating &mut Self is
                     // valid.
                     // And, by strict aliasing rules we can only treat $member as $member_type, and
                     // Self's layout is same. so, this is not undefined behavior.   ... I think.
@@ -93,7 +107,7 @@ macro_rules! define_composition_vo {
                         );
                     )*
 
-                    ret
+                    Some(ret)
                 }
             }
 
@@ -103,7 +117,6 @@ macro_rules! define_composition_vo {
             ) -> *const Self {
                 helper_get_first_tt!($($member, )*) as *const helper_get_first_tt!($($member_type,)*) as *const Self
             }
-
         }
 
         impl crate::types::repr_u8::VOWrapU8Array for $struct_name {
@@ -198,5 +211,13 @@ mod tests {
 
         assert_eq!(original_address as usize, composed_address as usize);
         assert_eq!(original_address as usize - composed_address as usize, 0);
+    }
+
+    #[test]
+    fn align_panic() {
+        println!("{}", core::mem::align_of::<MockComposition>());
+        println!("{}", core::mem::align_of::<ElfType>());
+
+        panic!();
     }
 }
