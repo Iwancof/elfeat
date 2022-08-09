@@ -296,13 +296,13 @@ macro_rules! define_composed_type {
                     /// If $member is None, this method will panic.
                     /// Otherwise, this returns $member's reference.
                     #[allow(unused)]
-                    $mvis fn [<get_ $member _unwrap>](&self) -> &$mtype {
+                    pub fn [<get_ $member _unwrap>](&self) -> &$mtype {
                         self.$member.as_ref().unwrap()
                     }
                     /// If $member is None, this method will panic.
                     /// Otherwise, this returns $member's `mut` reference.
                     #[allow(unused)]
-                    $mvis fn [<get_ $member _unwrap_mut>](&mut self) -> &mut $mtype {
+                    pub fn [<get_ $member _unwrap_mut>](&mut self) -> &mut $mtype {
                         self.$member.as_mut().unwrap()
                     }
                     /// If $member is Some, returns true.
@@ -431,7 +431,24 @@ where
         writeln!(fmt, "[{}; {}] {{", core::any::type_name::<T>(), N)?;
 
         for e in &self.0 {
-            writeln!(fmt, "{}{:>next_width$},", " ".repeat(next_width), e)?;
+            writeln!(fmt, "{}{},", " ".repeat(next_width), e)?;
+        }
+
+        write!(fmt, "{}}}", " ".repeat(width))
+    }
+}
+impl<T, const N: usize> core::fmt::LowerHex for Array<T, N>
+where
+    T: core::fmt::LowerHex,
+{
+    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let width = fmt.width().unwrap_or_else(|| 0);
+        let next_width = width + NEST_DEPTH;
+
+        writeln!(fmt, "[{}; {:x}] {{", core::any::type_name::<T>(), N)?;
+
+        for e in &self.0 {
+            writeln!(fmt, "{}{:x},", " ".repeat(next_width), e)?;
         }
 
         write!(fmt, "{}}}", " ".repeat(width))

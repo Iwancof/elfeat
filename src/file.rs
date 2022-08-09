@@ -52,7 +52,16 @@ impl<T> InterpretResult<T> {
 
     /// Unwrap self.val and forget object size.
     /// TODO: forgeting object size is good for us?
-    pub fn to_tuple_unwrap(self) -> InterpretObject<T>
+    pub fn to_tuple_unwrap(self) -> (usize, T)
+    where
+        T: core::fmt::Debug,
+    {
+        (self.pos, self.val.unwrap().1)
+    }
+
+    /// Unwrap self.val and forget object size.
+    /// TODO: Same
+    pub fn to_obj(self) -> InterpretObject<T>
     where
         T: core::fmt::Debug,
     {
@@ -70,6 +79,8 @@ pub struct InterpretObject<T> {
     pos: usize,
     val: T,
 }
+
+impl<T> InterpretObject<T> {}
 
 impl Seekable<'_> {
     /// Interpret object at absolute offset at `apos`.
@@ -95,5 +106,11 @@ impl Seekable<'_> {
         }
 
         return InterpretResult::new(pos, result);
+    }
+
+    /// Seek to required offset.
+    pub fn seek(&mut self, at: usize) -> Self {
+        self.pos = at;
+        return *self;
     }
 }

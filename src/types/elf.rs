@@ -3,7 +3,7 @@ use crate::{define_composed_type, define_model_type};
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
-    struct ElfMagic(Array<u8, 16>), []
+    pub struct ElfMagic(Array<u8, 16>), []
 );
 
 impl core::fmt::Display for ElfMagic {
@@ -24,7 +24,7 @@ impl core::fmt::Display for ElfMagic {
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
-    struct ElfType(u16),
+    pub struct ElfType(u16),
     pub
     [
 #define ET_NONE		0
@@ -43,7 +43,7 @@ define_model_type!(
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
-    struct ElfMachine(u16),
+    pub struct ElfMachine(u16),
     pub
     [
 #define EM_NONE		 0
@@ -234,7 +234,7 @@ define_model_type!(
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
-    struct ElfVersion(u32),
+    pub struct ElfVersion(u32),
     pub
     [
 #define EV_NONE		0
@@ -245,26 +245,11 @@ define_model_type!(
 );
 
 define_model_type!(
-    #[derive(PartialOrd, Ord, PartialEq, Eq)]
-    struct ElfEntry(usize),
+    #[derive(PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+    pub struct ElfOffset(usize),
     []
     display_implementation = true
 );
-/*
-define_enchanted_type!(ElfEntry, Csize,); // FIXME: replace Display
-define_enchanted_type!(ElfProgramHeaderOffset, Csize,);
-define_enchanted_type!(ElfFlags, Cu32,);
-
-define_composition_vo!(
-    [pub] struct ElfHeader {
-        [pub] e_ident: ElfMagic,
-        [pub] e_type: ElfType,
-        [pub] e_machine: ElfMachine,
-        [pub] e_version: ElfVersion,
-        [pub] e_shoff: ElfEntry,
-    }
-);
-*/
 
 define_composed_type!(
     pub struct ElfHeader {
@@ -272,10 +257,23 @@ define_composed_type!(
         e_type: Option<ElfType>,
         e_machine: Option<ElfMachine>,
         e_version: Option<ElfVersion>,
-        e_shoff: Option<ElfEntry>,
+        e_entry: Option<ElfOffset>,
+        e_phoff: Option<ElfOffset>,
+        e_shoff: Option<ElfOffset>,
     },
     display_implementation = true
 );
+
+/*
+Elf64_Off       e_shoff;
+Elf64_Word      e_flags;
+Elf64_Half      e_ehsize;
+Elf64_Half      e_phentsize;
+Elf64_Half      e_phnum;
+Elf64_Half      e_shentsize;
+Elf64_Half      e_shnum;
+Elf64_Half      e_shstrndx;
+*/
 
 /*
 impl core::fmt::Display for ElfHeader {
