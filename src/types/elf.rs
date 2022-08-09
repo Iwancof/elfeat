@@ -348,46 +348,46 @@ define_model_type!(
 define_composed_type!(
     pub struct ElfHeader {
         /// Magic number and other info
-        e_ident: Option<ElfMagic>,
+        pub e_ident: Option<ElfMagic>,
 
         /// Object file type
-        e_type: Option<ElfType>,
+        pub e_type: Option<ElfType>,
 
         /// Architecture
-        e_machine: Option<ElfMachine>,
+        pub e_machine: Option<ElfMachine>,
 
         /// Object file version
-        e_version: Option<ElfVersion>,
+        pub e_version: Option<ElfVersion>,
 
         /// Entry point virtual address
-        e_entry: Option<ElfEntry>,
+        pub e_entry: Option<ElfEntry>,
 
         /// Program header table file offset
-        e_phoff: Option<ElfPhOff>,
+        pub e_phoff: Option<ElfPhOff>,
 
         /// Section header table file offset
-        e_shoff: Option<ElfShOff>,
+        pub e_shoff: Option<ElfShOff>,
 
         /// Processor-specific flags
-        e_flags: Option<ElfFlag>,
+        pub e_flags: Option<ElfFlag>,
 
         /// ELF header size in bytes
-        e_ehsize: Option<ElfEhSize>,
+        pub e_ehsize: Option<ElfEhSize>,
 
         /// Program header table entry size
-        e_phentsize: Option<ElfPhEntrySize>,
+        pub e_phentsize: Option<ElfPhEntrySize>,
 
         /// Program header table entry count
-        e_phnum: Option<ElfPhNum>,
+        pub e_phnum: Option<ElfPhNum>,
 
         /// Section header table entry size
-        e_shentsize: Option<ElfShEntrySize>,
+        pub e_shentsize: Option<ElfShEntrySize>,
 
         /// Section header table entry count
-        e_shnum: Option<ElfShNum>,
+        pub e_shnum: Option<ElfShNum>,
 
         /// Section header string table index
-        e_shstrndx: Option<ElfShStrIndex>,
+        pub e_shstrndx: Option<ElfShStrIndex>,
     },
     display_implementation = true
 );

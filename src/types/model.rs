@@ -15,6 +15,10 @@ pub trait ModelFromU8Array: FromU8Array {
 pub trait ComposedFromU8Array: ModelFromU8Array {
     /// Return true if all of values are Some(_)
     fn is_some(&self) -> bool;
+
+    fn is_none(&self) -> bool {
+        !self.is_some()
+    }
 }
 
 #[macro_export]
@@ -68,11 +72,28 @@ macro_rules! define_constants {
         $vis: vis ($name: ident: $val: expr),
     )*
     ]) => {
-        $(
-            impl $struct_name {
+        paste::paste! {
+            $(
+                impl $struct_name {
                     $vis const $name: Self = Self($val);
+
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<is_ $name>](&self) -> bool {
+                        self == &Self::$name
+                    }
+                }
+            )*
+
+            impl $struct_name {
+                #[allow(unused)]
+                pub fn is_constant(&self) -> bool {
+                    $(
+                        self.[<is_ $name>]() ||
+                    )* false
+                }
             }
-         )*
+        }
         impl core::fmt::Debug for $struct_name {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 $(
@@ -160,6 +181,14 @@ macro_rules! define_model_type {
                 $struct_name(self)
             }
         }
+        impl $struct_name {
+            pub fn inner(self) -> $inner_type {
+                self.0
+            }
+            pub fn new(val: $inner_type) -> Self {
+                Self(val)
+            }
+        }
 
         impl crate::types::FromU8Array for $struct_name {
             fn from_slice(slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
@@ -172,7 +201,6 @@ macro_rules! define_model_type {
                 self.0.to_slice()
             }
         }
-
     };
     (
         $(#[$struct_meta: meta])*
@@ -358,7 +386,6 @@ macro_rules! define_composed_type {
             }
         }
 
-
         impl crate::types::FromU8Array for $struct_name {
             #[allow(unused_assignments)] // for last slice assignment
             fn from_slice(mut slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
@@ -417,6 +444,14 @@ macro_rules! define_composed_type {
                 )*
 
                 return true;
+            }
+        }
+
+        impl crate::types::model::ComposedFromU8Array for $struct_name {
+            fn is_some(&self) -> bool {
+                $(
+                    self.$member.is_some() &&
+                )* true
             }
         }
 

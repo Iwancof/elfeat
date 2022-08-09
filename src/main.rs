@@ -7,6 +7,7 @@ use file::Sequential;
 pub mod types;
 
 use types::elf::ElfHeader;
+use types::model::ComposedFromU8Array;
 
 use crate::{file::InterpretObject, types::Array};
 
@@ -20,17 +21,23 @@ fn main() {
 
     let s = Sequential::from_vec(v);
 
-    let seeker = s.to_seeakble();
-    let header: ElfHeader = seeker.interpret_abs_pos(0).to_tuple_unwrap().1;
-    println!("{}", header);
-    let entry_seeker = *header.get_e_entry_unwrap();
+    let main_seeker = s.to_seeakble();
+    let header: ElfHeader = main_seeker.interpret_abs_pos(0).to_tuple_unwrap().1;
 
-    let mut entry_seek = seeker.clone().seek(entry_seeker.into());
-    println!(
-        "{:x}",
-        entry_seek
-            .interpret_next::<Array<u8, 16>>()
-            .to_tuple_unwrap()
-            .1
-    );
+    println!("{}", header);
+
+    if header.e_shstrndx.unwrap().is_SHN_UNDEF() {
+        panic!();
+    }
+
+    let mut section_header_offset = header.e_shoff.unwrap().inner();
+    section_header_offset += (64 + 16 + 16) * 0;
+
+    let mut section_seeker = s.to_seeakble().seek(section_header_offset);
+
+    let read = section_seeker
+        .interpret_next::<Array<u8, 100>>()
+        .to_tuple_unwrap();
+
+    println!("{:?}", read);
 }
