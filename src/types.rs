@@ -4,6 +4,8 @@ pub mod primitive;
 #[macro_use]
 pub mod model;
 
+/// Array struct that is able to intepreted to &[u8]
+/// The reason why we don't use [T; N] as FromU8Array is, to implement Display trait by user.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Array<T, const N: usize>([T; N]);
 
@@ -38,6 +40,7 @@ pub enum FromU8Error<T> {
 
     /// The slice is invalid to represent.
     /// If you want to return a value regardless of success, return Some,
+    /// Left is read size.
     InvalidValue((usize, Option<T>)),
 }
 
@@ -59,6 +62,7 @@ impl<T> FromU8Error<T> {
     }
 }
 
+/// The train of type that has represent as u8 array.
 pub trait FromU8Array
 where
     Self: Sized,
@@ -70,6 +74,10 @@ where
         *slice = &slice[read..];
         Ok(obj)
     }
+
+    /// Interpret from slice.
     fn from_slice(slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>>;
+
+    /// Transform to slice on heap.
     fn to_slice(&self) -> Box<[u8]>;
 }

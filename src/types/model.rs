@@ -1,19 +1,43 @@
 use super::{Array, FromU8Array};
 
+/// Display nest width.
 pub const NEST_DEPTH: usize = 4;
 
 /// Modeled types.
+/// This has sanityness e.g, file offset value is too big.
 pub trait ModelFromU8Array: FromU8Array {
     /// Return true if value is valid.
     fn is_sanity(&self) -> bool;
 }
 
-/// Composed types.
+/// Composed type members are Option<$mtype>.
+/// We must provide all of members has value as Some(_)
 pub trait ComposedFromU8Array: ModelFromU8Array {
     /// Return true if all of values are Some(_)
     fn is_some(&self) -> bool;
 }
 
+/// Define modeled types.
+/// This take one inner type and may constant values.
+/// contant values format are
+/// ```rust
+/// struct_vis struct StructName(InnerType),
+/// [
+///     vis name: val
+/// ]
+/// ```
+/// or, C header style
+///
+/// ```rust
+/// struct_vis struct StructName(InnerType),
+/// member_vis
+/// [
+///     #define name val
+/// ]
+/// ```
+/// In any cases, it can take attributes(struct and member).
+/// If you provide "display_implementation = true" at last, this macro implements Display
+/// trait(pretty print)
 #[macro_export]
 macro_rules! define_model_type {
     (
@@ -82,10 +106,35 @@ macro_rules! define_model_type {
                     }
                 )*
 
-                return write!(fmt, "{}({:?})", "Unknown", self.0);
+                return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$struct_name>(), "Unknown", self.0);
             }
         }
-
+    };
+    (
+        $(#[$struct_meta: meta])*
+        $vis: vis struct $struct_name: ident (
+            $(#[$member_meta: meta])*
+            $inner_type: ty
+        ),
+        [
+            $(
+                $mvis: vis ($name: ident: $val: expr),
+            )*
+        ]
+        display_implementation = true
+    ) => {
+        define_model_type!(
+            $(#[$struct_meta])*
+            $vis struct $struct_name (
+                $(#[$member_meta])*
+                $inner_type
+            ),
+            [
+                $(
+                    $mvis ($name: $val),
+                )*
+            ]
+        );
         impl core::fmt::Display for $struct_name {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let _width = fmt.width().unwrap_or_else(|| 0);
@@ -112,6 +161,7 @@ macro_rules! define_model_type {
                 #define $name: ident $val: expr
             )*
         ]
+        $($extra_data: tt)*
     ) => {
         define_model_type!(
             $(#[$struct_meta])*
@@ -124,6 +174,7 @@ macro_rules! define_model_type {
                     $mvis ($name: $val),
                 )*
             ]
+            $($extra_data)*
         );
     };
     (
@@ -138,6 +189,7 @@ macro_rules! define_model_type {
                 ($name: ident: $val: expr),
             )*
         ]
+        $($extra_data: tt)*
     ) => {
         define_model_type!(
             $(#[$struct_meta])*
@@ -150,10 +202,23 @@ macro_rules! define_model_type {
                     $mvis ($name: $val),
                 )*
             ]
+            $($extra_data)*
         );
     };
 }
 
+/// Define composed types.
+/// This take modeled types as inner types.
+/// Each members are Option<$mtype>.
+/// ```rust
+/// define_composed_type!(
+///     pub struct  StructName {
+///         member1: Option<Type1>, // Type1 is implements ModelFromU8Array.
+///         member2: Option<Type2>, // Same.
+///     },
+/// );
+///
+/// If you provide "display_implementation = true" at last, this macro implements Display trait.
 #[macro_export]
 macro_rules! define_composed_type {
     (
@@ -224,24 +289,31 @@ macro_rules! define_composed_type {
                     #[allow(unused)]
                     fn [<write_ $member _to_fmt_debug>](&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                         match &self.$member {
-                            Some(s) => write!(fmt, "{}", s),
+                            Some(s) => write!(fmt, "{:?}", s),
                             None => write!(fmt, "{}", "None")
                         }
                     }
+                    /// If $member is None, this method will panic.
+                    /// Otherwise, this returns $member's reference.
                     #[allow(unused)]
-                    fn [<get_ $member _unwrap>](&self) -> &$mtype {
+                    $mvis fn [<get_ $member _unwrap>](&self) -> &$mtype {
                         self.$member.as_ref().unwrap()
                     }
+                    /// If $member is None, this method will panic.
+                    /// Otherwise, this returns $member's `mut` reference.
                     #[allow(unused)]
-                    fn [<get_ $member _unwrap_mut>](&mut self) -> &mut $mtype {
+                    $mvis fn [<get_ $member _unwrap_mut>](&mut self) -> &mut $mtype {
                         self.$member.as_mut().unwrap()
                     }
+                    /// If $member is Some, returns true.
                     #[allow(unused)]
-                    fn [<is_some $member>](&self) -> bool {
+                    pub fn [<is_some_ $member>](&self) -> bool {
                         self.$member.is_some()
                     }
+                    /// If $member is sanity, reutrns true.
+                    /// If $member is None, returns false.
                     #[allow(unused)]
-                    fn [<is_sanity_ $member>](&self) -> bool {
+                    pub fn [<is_sanity_ $member>](&self) -> bool {
                         use crate::types::model::ModelFromU8Array;
                         match &self.$member {
                             Some(x) => x.is_sanity(),
@@ -251,7 +323,8 @@ macro_rules! define_composed_type {
                 }
             )*
 
-            fn get_none() -> Self {
+            /// Return self instance that members are None.
+            pub fn get_none() -> Self {
                 Self {
                     $(
                         $member: None,
@@ -376,6 +449,7 @@ mod tests {
         [
             pub (VAL: 0),
         ]
+        display_implementation = true
     );
     define_model_type!(
         #[derive(Copy, Clone, PartialEq, Eq)]
@@ -384,13 +458,15 @@ mod tests {
         [
             (VAL: 0x88),
         ]
+        display_implementation = true
     );
 
     define_composed_type!(
         struct MockType {
             a: Option<Array<MT1, 3>>,
             v: Option<MT2>,
-        }
+        },
+        display_implementation = true
     );
 
     #[test]

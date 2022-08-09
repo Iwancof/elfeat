@@ -19,8 +19,8 @@ fn main() {
 
     let s = Sequential::from_vec(v);
 
-    let r1 = s.to_seeakble();
-    let (_read, header): (usize, ElfHeader) = r1.interpret_abs_pos(0).unwrap();
+    let mut r1 = s.to_seeakble();
+    let (_read, header): (usize, ElfHeader) = r1.interpret_abs_pos(0).to_tuple().1.unwrap();
 
     println!("{}", header);
 }

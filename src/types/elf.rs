@@ -6,6 +6,22 @@ define_model_type!(
     struct ElfMagic(Array<u8, 16>), []
 );
 
+impl core::fmt::Display for ElfMagic {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "[")?;
+        for x in &self.0 .0 {
+            if x.is_ascii_alphanumeric() {
+                write!(f, "{:>2}, ", *x as char)?;
+            } else {
+                write!(f, "0x{:0>2x}, ", x)?;
+            }
+        }
+        write!(f, "]")?;
+
+        Ok(())
+    }
+}
+
 define_model_type!(
     #[derive(PartialEq, Eq)]
     struct ElfType(u16),
@@ -22,6 +38,7 @@ define_model_type!(
 #define ET_LOPROC	0xff00
 #define ET_HIPROC	0xffff
     ]
+    display_implementation = true
 );
 
 define_model_type!(
@@ -212,6 +229,7 @@ define_model_type!(
 #define EM_NUM		253
 #define EM_ALPHA	0x9026
     ]
+    display_implementation = true
 );
 
 define_model_type!(
@@ -223,12 +241,14 @@ define_model_type!(
 #define EV_CURRENT	1
 #define EV_NUM		2
     ]
+    display_implementation = true
 );
 
 define_model_type!(
     #[derive(PartialOrd, Ord, PartialEq, Eq)]
     struct ElfEntry(usize),
     []
+    display_implementation = true
 );
 /*
 define_enchanted_type!(ElfEntry, Csize,); // FIXME: replace Display

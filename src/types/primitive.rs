@@ -110,6 +110,8 @@ pub mod tests {
     }
 }
 
+/// The macro implements FromU8Array.
+/// This uses primitive::from_le_bytes. so, we can apply this macro to only primitive types.
 #[macro_export]
 macro_rules! impl_f8a_le_bytes {
     ($t: ty) => {
