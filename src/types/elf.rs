@@ -1,5 +1,14 @@
 use super::Array;
-use crate::{define_composed_type, define_model_type};
+use crate::{define_composed_type, define_constants, define_model_type};
+
+mod raw_elf64 {
+    pub type Half = u16;
+    pub type Word = u32;
+    pub type Addr = usize; // FIXME: It is ok?
+    pub type Off = usize; // FIXME: same
+}
+
+use raw_elf64::*; // FIXME: support 32bit
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
@@ -24,7 +33,7 @@ impl core::fmt::Display for ElfMagic {
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
-    pub struct ElfType(u16),
+    pub struct ElfType(Half),
     pub
     [
 #define ET_NONE		0
@@ -43,7 +52,7 @@ define_model_type!(
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
-    pub struct ElfMachine(u16),
+    pub struct ElfMachine(Half),
     pub
     [
 #define EM_NONE		 0
@@ -234,7 +243,7 @@ define_model_type!(
 
 define_model_type!(
     #[derive(PartialEq, Eq)]
-    pub struct ElfVersion(u32),
+    pub struct ElfVersion(Word),
     pub
     [
 #define EV_NONE		0
@@ -246,55 +255,124 @@ define_model_type!(
 
 define_model_type!(
     #[derive(PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
-    pub struct ElfOffset(usize),
+    pub struct ElfEntry(Addr),
+    []
+    display_implementation = true
+);
+define_model_type!(
+    #[derive(PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+    pub struct ElfPhOff(Off),
+    []
+    display_implementation = true
+);
+define_model_type!(
+    #[derive(PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+    pub struct ElfShOff(Off),
+    []
+    display_implementation = true
+);
+
+define_model_type!(
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct ElfFlag(Word),
+    pub
+    [
+#define EF_SPARCV9_MM		3
+#define EF_SPARCV9_TSO		0
+#define EF_SPARCV9_PSO		1
+#define EF_SPARCV9_RMO		2
+#define EF_SPARC_LEDATA		0x800000
+#define EF_SPARC_EXT_MASK	0xFFFF00
+#define EF_SPARC_32PLUS		0x000100
+#define EF_SPARC_SUN_US1	0x000200
+#define EF_SPARC_HAL_R1		0x000400
+#define EF_SPARC_SUN_US3	0x000800
+    ]
+    display_implementation = true
+);
+
+define_model_type!(
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct ElfEhSize(Half),
+    []
+    display_implementation = true
+);
+define_model_type!(
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct ElfPhEntrySize(Half),
+    []
+    display_implementation = true
+);
+define_model_type!(
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct ElfPhNum(Half),
+    [
+#define PN_XNUM		0xffff
+    ]
+    display_implementation = true
+);
+define_model_type!(
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct ElfShEntrySize(Half),
+    []
+    display_implementation = true
+);
+define_model_type!(
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct ElfShNum(Half),
+    []
+    display_implementation = true
+);
+define_model_type!(
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct ElfShStrIndex(Half),
     []
     display_implementation = true
 );
 
 define_composed_type!(
     pub struct ElfHeader {
+        /// Magic number and other info
         e_ident: Option<ElfMagic>,
+
+        /// Object file type
         e_type: Option<ElfType>,
+
+        /// Architecture
         e_machine: Option<ElfMachine>,
+
+        /// Object file version
         e_version: Option<ElfVersion>,
-        e_entry: Option<ElfOffset>,
-        e_phoff: Option<ElfOffset>,
-        e_shoff: Option<ElfOffset>,
+
+        /// Entry point virtual address
+        e_entry: Option<ElfEntry>,
+
+        /// Program header table file offset
+        e_phoff: Option<ElfPhOff>,
+
+        /// Section header table file offset
+        e_shoff: Option<ElfShOff>,
+
+        /// Processor-specific flags
+        e_flags: Option<ElfFlag>,
+
+        /// ELF header size in bytes
+        e_ehsize: Option<ElfEhSize>,
+
+        /// Program header table entry size
+        e_phentsize: Option<ElfPhEntrySize>,
+
+        /// Program header table entry count
+        e_phnum: Option<ElfPhNum>,
+
+        /// Section header table entry size
+        e_shentsize: Option<ElfShEntrySize>,
+
+        /// Section header table entry count
+        e_shnum: Option<ElfShNum>,
+
+        /// Section header string table index
+        e_shstrndx: Option<ElfShStrIndex>,
     },
     display_implementation = true
 );
-
-/*
-Elf64_Off       e_shoff;
-Elf64_Word      e_flags;
-Elf64_Half      e_ehsize;
-Elf64_Half      e_phentsize;
-Elf64_Half      e_phnum;
-Elf64_Half      e_shentsize;
-Elf64_Half      e_shnum;
-Elf64_Half      e_shstrndx;
-*/
-
-/*
-impl core::fmt::Display for ElfHeader {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(fmt, "ident:\t\t[")?;
-        for c in self.e_ident.as_ref().as_ref() {
-            let v = c.into_inner();
-            if v.is_ascii_alphanumeric() {
-                write!(fmt, "{}, ", v as char)?;
-            } else {
-                write!(fmt, "{}, ", v)?;
-            }
-        }
-        write!(fmt, "]\n")?;
-
-        writeln!(fmt, "type:\t\t{}", self.e_type)?;
-        writeln!(fmt, "machine:\t{}", self.e_machine)?;
-        writeln!(fmt, "version:\t{}", self.e_version)?;
-        writeln!(fmt, "entry:\t{:?}", self.e_shoff)?;
-
-        Ok(())
-    }
-}
-*/

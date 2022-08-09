@@ -148,3 +148,29 @@ impl_f8a_le_bytes!(u128);
 
 impl_f8a_le_bytes!(usize);
 impl_f8a_le_bytes!(isize);
+
+type NullTermString = String;
+
+impl FromU8Array for NullTermString {
+    fn from_slice(slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>> {
+        let mut object = String::new();
+
+        let mut read = 0;
+        for (index, value) in slice.iter().enumerate() {
+            if value == &0 {
+                // Null terminalted
+
+                return Ok((index, object));
+            }
+            read = index;
+            object.push(*value as char);
+        }
+        return Err(FromU8Error::InvalidValue((read, Some(object))));
+    }
+
+    fn to_slice(&self) -> Box<[u8]> {
+        let mut v = self.clone().into_bytes();
+        v.push(0); // FIXME: Is this ok?
+        v.into_boxed_slice()
+    }
+}

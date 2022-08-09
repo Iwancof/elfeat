@@ -1,6 +1,5 @@
 #![feature(split_array)]
 #![feature(maybe_uninit_uninit_array)]
-
 pub mod file;
 use file::Sequential;
 
@@ -23,6 +22,7 @@ fn main() {
 
     let seeker = s.to_seeakble();
     let header: ElfHeader = seeker.interpret_abs_pos(0).to_tuple_unwrap().1;
+    println!("{}", header);
     let entry_seeker = *header.get_e_entry_unwrap();
 
     let mut entry_seek = seeker.clone().seek(entry_seeker.into());
