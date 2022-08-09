@@ -326,7 +326,22 @@ define_model_type!(
 define_model_type!(
     #[derive(PartialEq, Eq, Clone, Copy)]
     pub struct ElfShStrIndex(Half),
-    []
+    [
+#define SHN_UNDEF	0		/* Undefined section */
+#define SHN_LORESERVE	0xff00		/* Start of reserved indices */
+#define SHN_LOPROC	0xff00		/* Start of processor-specific */
+#define SHN_BEFORE	0xff00		/* Order section before all others
+                       (Solaris).  */
+#define SHN_AFTER	0xff01		/* Order section after all others
+                       (Solaris).  */
+#define SHN_HIPROC	0xff1f		/* End of processor-specific */
+#define SHN_LOOS	0xff20		/* Start of OS-specific */
+#define SHN_HIOS	0xff3f		/* End of OS-specific */
+#define SHN_ABS		0xfff1		/* Associated symbol is absolute */
+#define SHN_COMMON	0xfff2		/* Associated symbol is common */
+#define SHN_XINDEX	0xffff		/* Index is in extra table.  */
+#define SHN_HIRESERVE	0xffff		/* End of reserved indices */
+    ]
     display_implementation = true
 );
 
