@@ -248,11 +248,11 @@ define_composition_vo!(
 
 define_composed_type!(
     struct ElfHeader {
-        e_ident: ElfMagic,
-        e_type: ElfType,
-        e_machine: ElfMachine,
-        e_version: ElfVersion,
-        e_shoff: ElfEntry,
+        e_ident: Option<ElfMagic>,
+        e_type: Option<ElfType>,
+        e_machine: Option<ElfMachine>,
+        e_version: Option<ElfVersion>,
+        e_shoff: Option<ElfEntry>,
     },
     display_implementation = true
 );

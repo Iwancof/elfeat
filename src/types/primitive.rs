@@ -12,8 +12,9 @@ where
             _ => {
                 let (read, t) = T::from_slice(slice).map_err(|e| {
                     match e {
-                        FromU8Error::NotEnoughSlice => FromU8Error::NotEnoughSlice,
-                        FromU8Error::InvalidValue(_) => FromU8Error::InvalidValue(None),
+                        FromU8Error::NotEnoughSlice(_) => FromU8Error::NotEnoughSlice(None),
+                        // FIXME: return some value.
+                        FromU8Error::InvalidValue((read, _)) => FromU8Error::InvalidValue((read, None)),
                         // FIXME return some value.
                     }
                 })?;
@@ -56,7 +57,7 @@ pub mod tests {
         let slice: &[u8] = &[1];
 
         let e = i32::from_slice(slice).expect_err("Expected error");
-        assert_eq!(e, FromU8Error::NotEnoughSlice);
+        assert_eq!(e, FromU8Error::NotEnoughSlice(None));
     }
 
     #[test]
@@ -89,7 +90,7 @@ pub mod tests {
         let mut slice: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let err = <Array<i32, 3>>::from_slice_consume(&mut slice).expect_err("expected error");
 
-        assert_eq!(err, FromU8Error::NotEnoughSlice);
+        assert_eq!(err, FromU8Error::NotEnoughSlice(None));
     }
 
     #[test]
@@ -117,7 +118,7 @@ macro_rules! impl_f8a_le_bytes {
                 use crate::types::FromU8Error;
 
                 if slice.len() < core::mem::size_of::<Self>() {
-                    return Err(FromU8Error::NotEnoughSlice);
+                    return Err(FromU8Error::NotEnoughSlice(None));
                 }
                 let (array, _remain) = slice.split_array_ref();
 

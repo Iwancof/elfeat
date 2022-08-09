@@ -34,11 +34,11 @@ impl<T, const N: usize> core::ops::IndexMut<usize> for Array<T, N> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FromU8Error<T> {
     /// The slice is too short to represent.
-    NotEnoughSlice,
+    NotEnoughSlice(Option<T>),
 
     /// The slice is invalid to represent.
     /// If you want to return a value regardless of success, return Some,
-    InvalidValue(Option<T>),
+    InvalidValue((usize, Option<T>)),
 }
 
 impl<T> FromU8Error<T> {
@@ -47,10 +47,13 @@ impl<T> FromU8Error<T> {
         T: Into<U>,
     {
         match self {
-            FromU8Error::NotEnoughSlice => FromU8Error::NotEnoughSlice,
-            FromU8Error::InvalidValue(x) => FromU8Error::InvalidValue(match x {
+            FromU8Error::NotEnoughSlice(x) => FromU8Error::NotEnoughSlice(match x {
                 Some(x) => Some(x.into()),
                 None => None,
+            }),
+            FromU8Error::InvalidValue((read, x)) => FromU8Error::InvalidValue(match x {
+                Some(x) => (read, Some(x.into())),
+                None => (read, None),
             }),
         }
     }

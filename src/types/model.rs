@@ -8,6 +8,12 @@ pub trait ModelFromU8Array: FromU8Array {
     fn is_sanity(&self) -> bool;
 }
 
+/// Composed types.
+pub trait ComposedFromU8Array: ModelFromU8Array {
+    /// Return true if all of values are Some(_)
+    fn is_some(&self) -> bool;
+}
+
 #[macro_export]
 macro_rules! define_model_type {
     (
@@ -155,7 +161,7 @@ macro_rules! define_composed_type {
         $vis: vis struct $struct_name: ident {
             $(
                 $(#[$member_meta: meta])*
-                $mvis: vis $member: ident: $mtype: ty,
+                $mvis: vis $member: ident: Option<$mtype: ty>,
             )*
         },
         display_implementation = true
@@ -165,7 +171,7 @@ macro_rules! define_composed_type {
             $vis struct $struct_name {
                 $(
                     $(#[$member_meta])*
-                    $mvis $member: $mtype,
+                    $mvis $member: Option<$mtype>,
                 )*
             }
         );
@@ -177,7 +183,11 @@ macro_rules! define_composed_type {
                 writeln!(fmt, "{}:", core::any::type_name::<$struct_name>())?;
 
                 $(
-                    writeln!(fmt, "{}{} = {:>next_width$},", " ".repeat(next_width), stringify!($member), self.$member)?;
+                    write!(fmt, "{}{} = ", " ".repeat(next_width), stringify!($member))?;
+                    paste::paste! {
+                        self.[<write_ $member _to_fmt>](fmt)?;
+                    }
+                    write!(fmt, ",")?;
                 )*
 
                 Ok(())
@@ -189,7 +199,7 @@ macro_rules! define_composed_type {
         $vis: vis struct $struct_name: ident {
             $(
                 $(#[$member_meta: meta])*
-                $mvis: vis $member: ident: $mtype: ty,
+                $mvis: vis $member: ident: Option<$mtype: ty>,
             )*
         }
     ) => {
@@ -197,25 +207,98 @@ macro_rules! define_composed_type {
         $vis struct $struct_name {
             $(
                 $(#[$member_meta])*
-                $mvis $member: $mtype,
+                $mvis $member: Option<$mtype>,
             )*
         }
+        impl $struct_name {
+            $(
+                paste::paste! {
+                    // private
+                    #[allow(unused)]
+                    fn [<write_ $member _to_fmt>](&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                        match &self.$member {
+                            Some(s) => write!(fmt, "{}", s),
+                            None => write!(fmt, "{}", "None")
+                        }
+                    }
+                    #[allow(unused)]
+                    fn [<write_ $member _to_fmt_debug>](&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                        match &self.$member {
+                            Some(s) => write!(fmt, "{}", s),
+                            None => write!(fmt, "{}", "None")
+                        }
+                    }
+                    #[allow(unused)]
+                    fn [<get_ $member _unwrap>](&self) -> &$mtype {
+                        self.$member.as_ref().unwrap()
+                    }
+                    #[allow(unused)]
+                    fn [<get_ $member _unwrap_mut>](&mut self) -> &mut $mtype {
+                        self.$member.as_mut().unwrap()
+                    }
+                    #[allow(unused)]
+                    fn [<is_some $member>](&self) -> bool {
+                        self.$member.is_some()
+                    }
+                    #[allow(unused)]
+                    fn [<is_sanity_ $member>](&self) -> bool {
+                        use crate::types::model::ModelFromU8Array;
+                        match &self.$member {
+                            Some(x) => x.is_sanity(),
+                            None => false,
+                        }
+                    }
+                }
+            )*
+
+            fn get_none() -> Self {
+                Self {
+                    $(
+                        $member: None,
+                    )*
+                }
+            }
+        }
+
+
         impl crate::types::FromU8Array for $struct_name {
             #[allow(unused_assignments)] // for last slice assignment
             fn from_slice(mut slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
                 use crate::types::FromU8Error;
+                let mut ret = Self::get_none();
+                let mut is_valid = true;
+
                 paste::paste! {
                     let mut total = 0;
                     $(
-                        let (read, [<tmp_object $member>]) = <$mtype>::from_slice(slice).map_err(|e| match e {
-                            FromU8Error::NotEnoughSlice => FromU8Error::NotEnoughSlice,
-                            FromU8Error::InvalidValue(_) => FromU8Error::InvalidValue(None),
-                        })?;
+                        let result = <$mtype>::from_slice(slice);
+                        let (read, val): (usize, Option<$mtype>) = match result {
+                            Ok(x) => {
+                                (x.0, Some(x.1))
+                            }
+                            Err(e) => match e {
+                                FromU8Error::NotEnoughSlice(_) => {
+                                    return Err(FromU8Error::NotEnoughSlice(Some(ret)));
+                                },
+                                FromU8Error::InvalidValue((read, val)) => {
+                                    is_valid = false;
+                                    (read, val)
+                                }
+                            }
+                        };
                         total += read;
                         slice = &slice[read..];
+
+                        ret.$member = val;
                     )*
 
-                    Ok((total, Self { $($member: [<tmp_object $member>]),* }))
+                    if is_valid {
+                        Ok((total, ret))
+                    } else {
+                        Err(
+                            crate::types::FromU8Error::InvalidValue((total, Some(ret)))
+                        )
+                    }
                 }
             }
 
@@ -227,8 +310,15 @@ macro_rules! define_composed_type {
         impl crate::types::model::ModelFromU8Array for $struct_name {
             fn is_sanity(&self) -> bool {
                 $(
-                    self.$member.is_sanity() &&
-                )* true
+                    if !match &self.$member {
+                        Some(x) => x.is_sanity(),
+                        None => false
+                    } {
+                        return false;
+                    }
+                )*
+
+                return true;
             }
         }
 
@@ -236,7 +326,11 @@ macro_rules! define_composed_type {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 write!(fmt, "{} {{", core::any::type_name::<$struct_name>())?;
                 $(
-                    write!(fmt, "{}: {:?}, ", stringify!($member), self.$member)?;
+                    write!(fmt, "{}: ", stringify!($member))?;
+                    paste::paste! {
+                        self.[<write_ $member _to_fmt_debug>](fmt)?;
+                    }
+                    write!(fmt, ", ")?;
                 )*
 
                 return write!(fmt, "}}");
@@ -294,8 +388,8 @@ mod tests {
 
     define_composed_type!(
         struct MockType {
-            a: Array<MT1, 3>,
-            v: MT2,
+            a: Option<Array<MT1, 3>>,
+            v: Option<MT2>,
         }
     );
 
@@ -310,24 +404,27 @@ mod tests {
         let (size, mt) = MockType::from_slice(slice).unwrap();
 
         assert_eq!(size, (16 / 8) * 3 + (128 / 8));
-        assert_eq!(mt.a, [0x0201.into(), 0x0403.into(), 0x0605.into()].into());
-        assert_eq!(mt.v, 0x08070605040302010807060504030201.into());
+        assert_eq!(
+            mt.a,
+            Some([0x0201.into(), 0x0403.into(), 0x0605.into()].into())
+        );
+        assert_eq!(mt.v, Some(0x08070605040302010807060504030201.into()));
         assert_eq!(mt.is_sanity(), false);
     }
 
     #[test]
     fn sanity_check() {
         let mut d = MockType {
-            a: [MT1::VAL, MT1::VAL, MT1::VAL].into(),
-            v: MT2::VAL,
+            a: Some([MT1::VAL, MT1::VAL, MT1::VAL].into()),
+            v: Some(MT2::VAL),
         };
 
         assert_eq!(d.is_sanity(), true);
 
-        d.a[0] = 10.into();
+        d.get_a_unwrap_mut()[0] = 10.into();
 
-        assert_eq!(d.a.is_sanity(), false);
-        assert_eq!(d.v.is_sanity(), true);
+        assert_eq!(d.is_sanity_a(), false);
+        assert_eq!(d.is_sanity_v(), true);
         assert_eq!(d.is_sanity(), false);
     }
 }
