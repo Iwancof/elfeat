@@ -1,29 +1,36 @@
-use std::fs::File;
-use std::io::Read;
+use crate::types::{model::ModelFromU8Array, FromU8Error};
 
-trait BinaryReader {
-    fn read(&self, start: usize, len: usize) -> &[u8];
-    fn write(&mut self, start: usize, data: &[u8]);
-}
-
-struct Sequential {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Sequential {
     vector: Vec<u8>,
 }
 
-impl BinaryReader for Sequential {
-    fn read(&self, start: usize, len: usize) -> &[u8] {
-        &self.vector[start..start + len]
+impl Sequential {
+    pub fn from_vec(vector: Vec<u8>) -> Self {
+        Self { vector }
     }
-    fn write(&mut self, start: usize, data: &[u8]) {
-        let length = data.len();
-        self.vector[start..start + length].copy_from_slice(data);
+    pub fn to_seeakble_at(&self, pos: usize) -> Seekable<'_> {
+        Seekable { inner: self, pos }
+    }
+    pub fn to_seeakble(&self) -> Seekable<'_> {
+        self.to_seeakble_at(0)
     }
 }
 
-struct Seekable<'a, T>
-where
-    T: BinaryReader,
-{
-    inner: &'a T,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Seekable<'a> {
+    inner: &'a Sequential,
     pos: usize,
+}
+
+impl Seekable<'_> {
+    pub fn interpret_abs_pos<InterpretType>(
+        &self,
+        apos: usize,
+    ) -> Result<(usize, InterpretType), FromU8Error<InterpretType>>
+    where
+        InterpretType: ModelFromU8Array,
+    {
+        InterpretType::from_slice(&self.inner.vector[apos..])
+    }
 }

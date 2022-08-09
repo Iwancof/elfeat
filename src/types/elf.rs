@@ -247,7 +247,7 @@ define_composition_vo!(
 */
 
 define_composed_type!(
-    struct ElfHeader {
+    pub struct ElfHeader {
         e_ident: Option<ElfMagic>,
         e_type: Option<ElfType>,
         e_machine: Option<ElfMachine>,

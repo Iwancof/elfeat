@@ -187,7 +187,7 @@ macro_rules! define_composed_type {
                     paste::paste! {
                         self.[<write_ $member _to_fmt>](fmt)?;
                     }
-                    write!(fmt, ",")?;
+                    writeln!(fmt, ",")?;
                 )*
 
                 Ok(())
