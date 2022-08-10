@@ -31,28 +31,57 @@ fn main() {
     }
 
     let section_header_offset = *header.e_shoff.unwrap().inner();
+    let section_strtab_index = *header.e_shstrndx.unwrap().inner() as usize;
 
     let mut section_seeker = s.to_seeakble().seek(section_header_offset);
 
-    let strtab_header: section_header::Header = loop {
+    let mut section_headers = vec![];
+    for _i in 0.. {
         let (_at, read) = section_seeker
             .interpret_next::<section_header::Header>()
-            .to_tuple_unwrap();
+            .to_tuple();
 
-        println!("{}", read);
-        if read.get_sh_type_unwrap().is_SHT_STRTAB() && read.get_sh_flags_unwrap().is_SHF_ALLOC() {
-            break read;
+        if read.is_err() {
+            break;
         }
-    };
 
-    println!("{}", strtab_header);
+        section_headers.push(read.unwrap().1);
+    }
 
-    section_seeker.seek(*strtab_header.get_sh_offset_unwrap().inner());
+    let strtab = section_headers[section_strtab_index];
+    println!("{}", strtab);
 
-    for _i in 0..10 {
-        let r = section_seeker
+    let mut sh_name_seeker = s.to_seeakble().seek(*strtab.get_sh_offset_unwrap().inner());
+    let mut section_names = vec![];
+
+    // TODO: range limited seeker
+
+    let mut read = 0;
+    for _i in 0.. {
+        let (_pos, s) = sh_name_seeker
             .interpret_next::<types::primitive::NullTermString>()
+            .to_tuple();
+
+        let (size, s) = s.unwrap();
+        read += size;
+
+        if *strtab.get_sh_size_unwrap().inner() < read as _ {
+            break;
+        }
+
+        println!("{}", s);
+        section_names.push(s);
+    }
+
+    println!("{:?}", section_names);
+
+    for sh in section_headers {
+        let (_, name) = section_seeker
+            .interpret_abs_pos::<crate::types::primitive::NullTermString>(
+                *sh.get_sh_name_unwrap().inner() as usize + *strtab.get_sh_offset_unwrap().inner(),
+            )
             .to_tuple_unwrap();
-        println!("{}", r.1);
+        println!("name = {}", name);
+        println!("{}", sh);
     }
 }

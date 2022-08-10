@@ -400,7 +400,9 @@ pub mod section_header {
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct Name(Word),
-        [],
+        [
+            (NONE: 0),
+        ],
         display = true, bitflags = false,
     );
 

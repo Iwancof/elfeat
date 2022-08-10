@@ -210,7 +210,13 @@ macro_rules! define_model_type_normal {
 
         impl core::fmt::Display for $strname {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                return write!(fmt, "{:?}", self.0);
+                $(
+                    if self == &Self::$name {
+                        return write!(fmt, "{}({:?})", stringify!($name), self.0);
+                    }
+                )*
+
+                return write!(fmt, "{}({:?})", "Unknown", self.0);
             }
         }
     };
