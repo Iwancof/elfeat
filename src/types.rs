@@ -32,6 +32,12 @@ impl<T, const N: usize> core::ops::IndexMut<usize> for Array<T, N> {
     }
 }
 
+impl<T, const N: usize> Array<T, N> {
+    pub fn inner(&self) -> &[T; N] {
+        &self.0
+    }
+}
+
 /// Error type of represent from u8.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FromU8Error<T> {

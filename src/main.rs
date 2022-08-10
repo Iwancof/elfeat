@@ -7,9 +7,6 @@ use file::Sequential;
 pub mod types;
 
 use types::elf::*;
-use types::model::ComposedFromU8Array;
-
-use crate::{file::InterpretObject, types::Array};
 
 fn main() {
     use std::fs::File;
@@ -69,19 +66,62 @@ fn main() {
             break;
         }
 
-        println!("{}", s);
+        // println!("{}", s);
         section_names.push(s);
     }
 
     println!("{:?}", section_names);
 
-    for sh in section_headers {
-        let (_, name) = section_seeker
+    for sh in &section_headers {
+        let (_, _name) = section_seeker
             .interpret_abs_pos::<crate::types::primitive::NullTermString>(
                 *sh.get_sh_name_unwrap().inner() as usize + *strtab.get_sh_offset_unwrap().inner(),
             )
             .to_tuple_unwrap();
-        println!("name = {}", name);
-        println!("{}", sh);
+        // println!("name = {}", name);
+        // println!("{}", sh);
+    }
+
+    let text = section_headers
+        .iter()
+        .find(|f| {
+            section_seeker
+                .interpret_abs_pos::<crate::types::primitive::NullTermString>(
+                    *f.get_sh_name_unwrap().inner() as usize
+                        + *strtab.get_sh_offset_unwrap().inner(),
+                )
+                .to_tuple_unwrap()
+                .1
+                == ".text"
+        })
+        .expect("Section \".text\" not found");
+
+    let offset = text.get_sh_offset_unwrap();
+
+    let mut seeker = s.to_seeakble_at(*offset.inner());
+    let text_data = seeker
+        .interpret_next::<crate::types::Array<u8, 0x100>>()
+        .to_tuple_unwrap()
+        .1;
+
+    use zydis::*;
+
+    let formatter = Formatter::new(FormatterStyle::INTEL).unwrap();
+    let decoder = Decoder::new(MachineMode::LONG_64, AddressWidth::_64).unwrap();
+
+    // Our actual buffer.
+    let mut buffer = [0u8; 200];
+    // A wrapped version of the buffer allowing nicer access.
+    let mut buffer = OutputBuffer::new(&mut buffer[..]);
+
+    // 0 is the address for our code.
+    for (instruction, ip) in decoder.instruction_iterator(text_data.inner(), 0) {
+        // We use Some(ip) here since we want absolute addressing based on the given
+        // `ip`. If we would want to have relative addressing, we would use
+        // `None` instead.
+        formatter
+            .format_instruction(&instruction, &mut buffer, Some(ip), None)
+            .unwrap();
+        println!("0x{:016X} {}", ip, buffer);
     }
 }

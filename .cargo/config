@@ -1,0 +1,12 @@
+[alias]
+build_small = "build -Z build-std=core,compiler_builtins,alloc,std,panic_abort -Z build-std-features=panic_immediate_abort"
+run_small = "run -Z build-std=core,compiler_builtins,alloc,std,panic_abort -Z build-std-features=panic_immediate_abort"
+bloat_small = "bloat -Z build-std=core,compiler_builtins,alloc,std,panic_abort -Z build-std-features=panic_immediate_abort"
+
+[target.x86_64-unknown-linux-gnu]
+# rustflags = ["-Clink-arg=-fuse-ld=lld", "-Clink-arg=-Xlinker", "-Clink-arg=-rpath", "-Clink-arg=-Xlinker", "-Clink-arg=/home/iwancof/libc_build/lib"]
+rustflags = ["-Clink-arg=-fuse-ld=mold", "-Ctarget-feature=+avx",  "-Clink-arg=-Xlinker", "-Clink-arg=-rpath", "-Clink-arg=-Xlinker", "-Clink-arg=/home/iwancof/libc_build/lib", "-Clink-arg=-Xlinker", "-Clink-arg=--no-build-id"]
+
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "link-arg=-fuse-ld=mold", "-C", "target-feature=+avx"]
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
