@@ -149,7 +149,7 @@ impl_f8a_le_bytes!(u128);
 impl_f8a_le_bytes!(usize);
 impl_f8a_le_bytes!(isize);
 
-type NullTermString = String;
+pub type NullTermString = String;
 
 impl FromU8Array for NullTermString {
     fn from_slice(slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>> {
@@ -160,7 +160,7 @@ impl FromU8Array for NullTermString {
             if value == &0 {
                 // Null terminalted
 
-                return Ok((index, object));
+                return Ok((index + 1, object));
             }
             read = index;
             object.push(*value as char);

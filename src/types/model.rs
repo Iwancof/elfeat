@@ -75,6 +75,7 @@ macro_rules! define_constants {
         paste::paste! {
             $(
                 impl $struct_name {
+                    #[allow(non_upper_case_globals)]
                     $vis const $name: Self = Self($val);
 
                     #[allow(unused)]
@@ -182,9 +183,11 @@ macro_rules! define_model_type {
             }
         }
         impl $struct_name {
+            #[allow(unused)]
             pub fn inner(self) -> $inner_type {
                 self.0
             }
+            #[allow(unused)]
             pub fn new(val: $inner_type) -> Self {
                 Self(val)
             }

@@ -6,7 +6,7 @@ use file::Sequential;
 #[macro_use]
 pub mod types;
 
-use types::elf::ElfHeader;
+use types::elf::*;
 use types::model::ComposedFromU8Array;
 
 use crate::{file::InterpretObject, types::Array};
@@ -22,7 +22,7 @@ fn main() {
     let s = Sequential::from_vec(v);
 
     let main_seeker = s.to_seeakble();
-    let header: ElfHeader = main_seeker.interpret_abs_pos(0).to_tuple_unwrap().1;
+    let header: elf_header::Header = main_seeker.interpret_abs_pos(0).to_tuple_unwrap().1;
 
     println!("{}", header);
 
@@ -30,14 +30,28 @@ fn main() {
         panic!();
     }
 
-    let mut section_header_offset = header.e_shoff.unwrap().inner();
-    section_header_offset += (64 + 16 + 16) * 0;
+    let section_header_offset = header.e_shoff.unwrap().inner();
 
     let mut section_seeker = s.to_seeakble().seek(section_header_offset);
 
-    let read = section_seeker
-        .interpret_next::<Array<u8, 100>>()
-        .to_tuple_unwrap();
+    let strtab_header: section_header::Header = loop {
+        let (_at, read) = section_seeker
+            .interpret_next::<section_header::Header>()
+            .to_tuple_unwrap();
 
-    println!("{:?}", read);
+        if read.get_sh_type_unwrap().is_SHT_STRTAB() && read.get_sh_flags_unwrap().is_SHF_ALLOC() {
+            break read;
+        }
+    };
+
+    println!("{}", strtab_header);
+
+    section_seeker.seek(strtab_header.get_sh_offset_unwrap().inner());
+
+    for _i in 0..20 {
+        let r = section_seeker
+            .interpret_next::<types::primitive::NullTermString>()
+            .to_tuple_unwrap();
+        println!("{}", r.1);
+    }
 }
