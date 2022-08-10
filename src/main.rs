@@ -6,6 +6,9 @@ use file::Sequential;
 #[macro_use]
 pub mod types;
 
+fn main() {}
+
+/*
 use types::elf::*;
 use types::model::ComposedFromU8Array;
 
@@ -55,3 +58,4 @@ fn main() {
         println!("{}", r.1);
     }
 }
+*/

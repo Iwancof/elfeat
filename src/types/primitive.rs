@@ -39,6 +39,71 @@ where
     }
 }
 
+/// The macro implements FromU8Array.
+/// This uses primitive::from_le_bytes. so, we can apply this macro to only primitive types.
+#[macro_export]
+macro_rules! impl_f8a_le_bytes {
+    ($t: ty) => {
+        impl crate::types::FromU8Array for $t {
+            fn from_slice(slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
+                use crate::types::FromU8Error;
+
+                if slice.len() < core::mem::size_of::<Self>() {
+                    return Err(FromU8Error::NotEnoughSlice(None));
+                }
+                let (array, _remain) = slice.split_array_ref();
+
+                Ok((core::mem::size_of::<Self>(), Self::from_le_bytes(*array)))
+            }
+
+            fn to_slice(&self) -> Box<[u8]> {
+                Box::new(Self::to_le_bytes(*self))
+            }
+        }
+    };
+}
+
+impl_f8a_le_bytes!(i8);
+impl_f8a_le_bytes!(i16);
+impl_f8a_le_bytes!(i32);
+impl_f8a_le_bytes!(i64);
+impl_f8a_le_bytes!(i128);
+
+impl_f8a_le_bytes!(u8);
+impl_f8a_le_bytes!(u16);
+impl_f8a_le_bytes!(u32);
+impl_f8a_le_bytes!(u64);
+impl_f8a_le_bytes!(u128);
+
+impl_f8a_le_bytes!(usize);
+impl_f8a_le_bytes!(isize);
+
+pub type NullTermString = String;
+
+impl FromU8Array for NullTermString {
+    fn from_slice(slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>> {
+        let mut object = String::new();
+
+        let mut read = 0;
+        for (index, value) in slice.iter().enumerate() {
+            if value == &0 {
+                // Null terminalted
+
+                return Ok((index + 1, object));
+            }
+            read = index;
+            object.push(*value as char);
+        }
+        return Err(FromU8Error::InvalidValue((read + 1, Some(object))));
+    }
+
+    fn to_slice(&self) -> Box<[u8]> {
+        let mut v = self.clone().into_bytes();
+        v.push(0); // FIXME: Is this ok?
+        v.into_boxed_slice()
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -108,69 +173,44 @@ pub mod tests {
             &[0xf4, 0xf3, 0xf2, 0xf1, 0xf8, 0xf7, 0xf6, 0xf5]
         );
     }
-}
 
-/// The macro implements FromU8Array.
-/// This uses primitive::from_le_bytes. so, we can apply this macro to only primitive types.
-#[macro_export]
-macro_rules! impl_f8a_le_bytes {
-    ($t: ty) => {
-        impl crate::types::FromU8Array for $t {
-            fn from_slice(slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
-                use crate::types::FromU8Error;
+    #[test]
+    fn null_terminated_value_ok() {
+        let slice: &[u8] = &[
+            'a' as u8, 'b' as u8, 'c' as u8, 0, 'd' as u8, 'e' as u8, 'f' as u8, 0,
+        ];
+        let result = NullTermString::from_slice(slice);
 
-                if slice.len() < core::mem::size_of::<Self>() {
-                    return Err(FromU8Error::NotEnoughSlice(None));
-                }
-                let (array, _remain) = slice.split_array_ref();
-
-                Ok((core::mem::size_of::<Self>(), Self::from_le_bytes(*array)))
-            }
-
-            fn to_slice(&self) -> Box<[u8]> {
-                Box::new(Self::to_le_bytes(*self))
-            }
-        }
-    };
-}
-
-impl_f8a_le_bytes!(i8);
-impl_f8a_le_bytes!(i16);
-impl_f8a_le_bytes!(i32);
-impl_f8a_le_bytes!(i64);
-impl_f8a_le_bytes!(i128);
-
-impl_f8a_le_bytes!(u8);
-impl_f8a_le_bytes!(u16);
-impl_f8a_le_bytes!(u32);
-impl_f8a_le_bytes!(u64);
-impl_f8a_le_bytes!(u128);
-
-impl_f8a_le_bytes!(usize);
-impl_f8a_le_bytes!(isize);
-
-pub type NullTermString = String;
-
-impl FromU8Array for NullTermString {
-    fn from_slice(slice: &[u8]) -> Result<(usize, Self), FromU8Error<Self>> {
-        let mut object = String::new();
-
-        let mut read = 0;
-        for (index, value) in slice.iter().enumerate() {
-            if value == &0 {
-                // Null terminalted
-
-                return Ok((index + 1, object));
-            }
-            read = index;
-            object.push(*value as char);
-        }
-        return Err(FromU8Error::InvalidValue((read, Some(object))));
+        assert_eq!(result.unwrap(), (4, "abc".to_string()));
     }
 
-    fn to_slice(&self) -> Box<[u8]> {
-        let mut v = self.clone().into_bytes();
-        v.push(0); // FIXME: Is this ok?
-        v.into_boxed_slice()
+    #[test]
+    fn null_terminated_value_ok_consume() {
+        let mut slice: &[u8] = &[
+            'a' as u8, 'b' as u8, 'c' as u8, 0, 'd' as u8, 'e' as u8, 'f' as u8, 0,
+        ];
+        let result = NullTermString::from_slice_consume(&mut slice);
+        assert_eq!(result.unwrap(), "abc".to_string());
+        let result = NullTermString::from_slice_consume(&mut slice);
+        assert_eq!(result.unwrap(), "def".to_string());
+
+        assert_eq!(slice, &[]);
+    }
+
+    #[test]
+    fn null_terminated_value_ng() {
+        let mut slice: &[u8] = &[
+            'a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8, 'f' as u8,
+        ];
+        let result = NullTermString::from_slice_consume(&mut slice);
+
+        assert!(result.is_err());
+
+        let val = result.unwrap_err();
+
+        assert_eq!(
+            val,
+            FromU8Error::InvalidValue((6, Some("abcdef".to_string())))
+        );
     }
 }

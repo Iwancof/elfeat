@@ -23,37 +23,173 @@ pub trait ComposedFromU8Array: ModelFromU8Array {
 
 #[macro_export]
 macro_rules! define_constants {
-    ($struct_name: ty, []
-     display_implementation = true
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $vis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = $display: tt,
+     bitflags = true,
+    ) => {
+        $(#[$strmeta])*
+        $str_vis struct $strname(
+            $(#[$memmeta])*
+            $memtype
+        );
+
+        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+                                    [
+                                        $(
+                                            $vis ($name: $val),
+                                        )*
+                                    ],
+                                    display = $display,
+                                    );
+
+        impl crate::types::model::ModelFromU8Array for $strname {
+            fn is_sanity(&self) -> bool {
+                self.has_constant()
+            }
+        }
+
+        paste::paste! {
+            $(
+                impl $strname {
+                    #[allow(non_upper_case_globals)]
+                    $vis const $name: $strname = $strname($val);
+
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<has_ $name>](&self) -> bool {
+                        self.has(Self::$name)
+                    }
+
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<is_ $name>](&self) -> bool {
+                        self == &Self::$name
+                    }
+                }
+            )*
+
+            impl $strname {
+                #[allow(unused)]
+                pub fn has_constant(&self) -> bool {
+                    $(
+                        self.[<has_ $name>]() ||
+                    )* false
+                }
+            }
+        }
+
+        impl $strname {
+            pub fn has(&self, left: Self) -> bool {
+                self.inner() & left.inner() != 0
+            }
+        }
+
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $vis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = $display: tt,
+     bitflags = false,
      ) => {
-        define_constants!($struct_name, []);
-        impl core::fmt::Display for $struct_name {
+        $(#[$strmeta])*
+        $str_vis struct $strname(
+            $(#[$memmeta])*
+            $memtype
+        );
+        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+                                  [
+                                    $(
+                                        $vis ($name: $val),
+                                    )*
+                                  ],
+                                  display = $display,
+                                  );
+
+        impl crate::types::model::ModelFromU8Array for $strname {
+            fn is_sanity(&self) -> bool {
+                $(
+                    if self == &Self::$name {
+                        return true;
+                    }
+                )*
+                return false;
+            }
+        }
+
+        paste::paste! {
+            $(
+                impl $strname {
+                    #[allow(non_upper_case_globals)]
+                    $vis const $name: Self = Self($val);
+
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<is_ $name>](&self) -> bool {
+                        self == &Self::$name
+                    }
+                }
+            )*
+
+            impl $strname {
+                #[allow(unused)]
+                pub fn is_constant(&self) -> bool {
+                    $(
+                        self.[<is_ $name>]() ||
+                    )* false
+                }
+            }
+        }
+     };
+    /*
+
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty, [],
+     display = $display: expr,
+     bitflags = false,
+     ) => {
+        define_constants!($strname, [], display = false, bitflags = false,);
+        impl core::fmt::Display for $strname {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 return write!(fmt, "{:?}", self.0);
             }
         }
     };
-    ($struct_name: ty, []) => {
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty, [],
+    display = false,
+    bitflags = false,
+    ) => {
         impl core::fmt::Debug for $struct_name {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 return write!(fmt, "{} {{ ({:?}) }}", core::any::type_name::<$struct_name>(), self.0);
             }
         }
     };
-    ($struct_name: ty, [
-    $(
-        $vis: vis ($name: ident: $val: expr),
-    )*
-    ]
-    display_implementation = true
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $vis: vis ($name: ident: $val: expr),
+        )*
+    ],
+    display = true,
+    bitflags = false,
     ) => {
-        define_constants!($struct_name,
+        define_constants!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
         [
             $(
                 $vis ($name: $val),
             )*
-        ]);
-        impl core::fmt::Display for $struct_name {
+        ],
+        display = false,
+        bitflags = false,
+        );
+        impl core::fmt::Display for $strname {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let _width = fmt.width().unwrap_or_else(|| 0);
 
@@ -67,14 +203,18 @@ macro_rules! define_constants {
             }
         }
     };
-    ($struct_name: ty, [
-    $(
-        $vis: vis ($name: ident: $val: expr),
-    )*
-    ]) => {
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $vis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = false,
+     bitflags = false,
+    ) => {
         paste::paste! {
             $(
-                impl $struct_name {
+                impl $strname {
                     #[allow(non_upper_case_globals)]
                     $vis const $name: Self = Self($val);
 
@@ -86,7 +226,7 @@ macro_rules! define_constants {
                 }
             )*
 
-            impl $struct_name {
+            impl $strname {
                 #[allow(unused)]
                 pub fn is_constant(&self) -> bool {
                     $(
@@ -95,15 +235,152 @@ macro_rules! define_constants {
                 }
             }
         }
-        impl core::fmt::Debug for $struct_name {
+        impl core::fmt::Debug for $strname {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 $(
                     if self == &Self::$name {
-                        return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$struct_name>(), stringify!($name), self.0);
+                        return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$strname>(), stringify!($name), self.0);
                     }
                 )*
 
-                return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$struct_name>(), "Unknown", self.0);
+                return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$strname>(), "Unknown", self.0);
+            }
+        }
+    };
+    */
+}
+
+#[macro_export]
+macro_rules! define_model_type_bitflags {
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($_memmeta: meta)*, $memtype: ty,
+     [],
+     display = false,
+    ) => {
+        impl core::fmt::Debug for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                return write!(fmt, "{} {{ ({:?}) }}", core::any::type_name::<$strname>(), self.0);
+            }
+        }
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($_memmeta: meta)*, $memtype: ty,
+     [],
+     display = true,
+    ) => {
+        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($_memmeta)*, $memtype,
+                                    [
+                                        $(
+                                            $_memvis ($name: $val),
+                                        )*
+                                    ],
+                                    display = false,
+                                    );
+        impl core::fmt::Display for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                return write!(fmt, "{:?}", self.0);
+            }
+        }
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($_memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $memvis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = false,
+    ) => {
+        impl core::fmt::Debug for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                unimplemented!()
+            }
+        }
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($_memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $_memvis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = true,
+    ) => {
+        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($_memmeta)*, $memtype,
+                                    [
+                                        $(
+                                            $_memvis ($name: $val),
+                                        )*
+                                    ],
+                                    display = false,
+                                    );
+        // Display implementation here
+    };
+}
+
+#[macro_export]
+macro_rules! define_model_type_normal {
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [],
+     display = false,
+    ) => {
+        impl core::fmt::Debug for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                return write!(fmt, "{} {{ ({:?}) }}", core::any::type_name::<$strname>(), self.0);
+            }
+        }
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [],
+     display = true,
+    ) => {
+        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+                                    [],
+                                    display = false,
+                                    );
+        impl core::fmt::Display for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                return write!(fmt, "{:?}", self.0);
+            }
+        }
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $memvis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = false,
+    ) => {
+        impl core::fmt::Debug for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                $(
+                    if self == &Self::$name {
+                        return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$strname>(), stringify!($name), self.0);
+                    }
+                )*
+
+                return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$strname>(), "Unknown", self.0);
+            }
+        }
+
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $memvis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = true,
+    ) => {
+        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+                                    [
+                                        $(
+                                            $memvis ($name: $val),
+                                        )*
+                                    ],
+                                    display = false,
+                                    );
+
+        impl core::fmt::Display for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                return write!(fmt, "{:?}", self.0);
             }
         }
     };
@@ -142,33 +419,28 @@ macro_rules! define_model_type {
             $(
                 $mvis: vis ($name: ident: $val: expr),
             )*
-        ]
+        ],
         $($extra: tt)*
     ) => {
-        $(#[$struct_meta])*
-        $vis struct $struct_name(
-            $(#[$member_meta])*
-            $inner_type
-        );
-
         define_constants!(
-            $struct_name,
+            $($struct_meta)*, $vis, $struct_name, $($member_meta)*, $inner_type,
             [
                 $(
                     $mvis ($name: $val),
                 )*
-            ]
+            ],
             $($extra)*
         );
 
-        impl crate::types::model::ModelFromU8Array for $struct_name {
-            fn is_sanity(&self) -> bool {
-                $(
-                    if self == &Self::$name {
-                        return true;
-                    }
-                )*
-                return false;
+        impl crate::types::FromU8Array for $struct_name {
+            fn from_slice(slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
+                match <$inner_type>::from_slice(slice) {
+                    Ok((read, x)) => Ok((read, Self::new(x))),
+                    Err(e) => Err(e.into()),
+                }
+            }
+            fn to_slice(&self) -> Box<[u8]> {
+                self.inner().to_slice()
             }
         }
 
@@ -182,28 +454,24 @@ macro_rules! define_model_type {
                 $struct_name(self)
             }
         }
+
         impl $struct_name {
             #[allow(unused)]
-            pub fn inner(self) -> $inner_type {
-                self.0
+            pub fn inner(&self) -> &$inner_type {
+                &self.0
             }
             #[allow(unused)]
-            pub fn new(val: $inner_type) -> Self {
-                Self(val)
+            pub fn inner_mut(&mut self) -> &mut $inner_type {
+                &mut self.0
+            }
+
+            #[allow(unused)]
+            pub fn new(val: $inner_type) -> $struct_name {
+                $struct_name(val)
             }
         }
 
-        impl crate::types::FromU8Array for $struct_name {
-            fn from_slice(slice: &[u8]) -> Result<(usize, Self), crate::types::FromU8Error<Self>> {
-                match <$inner_type>::from_slice(slice) {
-                    Ok((read, x)) => Ok((read, Self(x))),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            fn to_slice(&self) -> Box<[u8]> {
-                self.0.to_slice()
-            }
-        }
+
     };
     (
         $(#[$struct_meta: meta])*
@@ -216,7 +484,7 @@ macro_rules! define_model_type {
             $(
                 #define $name: ident $val: expr
             )*
-        ]
+        ],
         $($extra: tt)*
     ) => {
         define_model_type!(
@@ -229,7 +497,7 @@ macro_rules! define_model_type {
                 $(
                     $mvis ($name: $val),
                 )*
-            ]
+            ],
             $($extra)*
         );
     };
@@ -244,7 +512,7 @@ macro_rules! define_model_type {
             $(
                 ($name: ident: $val: expr),
             )*
-        ]
+        ],
         $($extra: tt)*
     ) => {
         define_model_type!(
@@ -257,7 +525,7 @@ macro_rules! define_model_type {
                 $(
                     $mvis ($name: $val),
                 )*
-            ]
+            ],
             $($extra)*
         );
     };
@@ -285,7 +553,7 @@ macro_rules! define_composed_type {
                 $mvis: vis $member: ident: Option<$mtype: ty>,
             )*
         },
-        display_implementation = true
+        display = true,
     ) => {
         define_composed_type!(
             $(#[$struct_meta])*
@@ -528,8 +796,9 @@ mod tests {
         struct MT1(i16),
         [
             pub (VAL: 0),
-        ]
-        display_implementation = true
+        ],
+        display = true,
+        bitflags = false,
     );
     define_model_type!(
         #[derive(Copy, Clone, PartialEq, Eq)]
@@ -537,8 +806,21 @@ mod tests {
         pub
         [
             (VAL: 0x88),
-        ]
-        display_implementation = true
+        ],
+        display = true,
+        bitflags = false,
+    );
+
+    define_model_type!(
+        #[derive(Copy, Clone, PartialEq, Eq)]
+        struct BF(u16),
+        pub
+        [
+            (F1: 0b1),
+            (F2: 0b10),
+        ],
+        display = true,
+        bitflags = true,
     );
 
     define_composed_type!(
@@ -546,7 +828,7 @@ mod tests {
             a: Option<Array<MT1, 3>>,
             v: Option<MT2>,
         },
-        display_implementation = true
+        display = true,
     );
 
     #[test]

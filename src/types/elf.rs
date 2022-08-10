@@ -1,6 +1,10 @@
 use super::Array;
-use crate::{define_composed_type, define_constants, define_model_type};
+use crate::{
+    define_composed_type, define_constants, define_model_type, define_model_type_bitflags,
+    define_model_type_normal,
+};
 
+/*
 mod raw_elf64 {
     pub type Half = u16;
     pub type Word = u32;
@@ -15,9 +19,8 @@ pub mod elf_header {
     use super::*;
     define_model_type!(
         #[derive(PartialEq, Eq)]
-        pub struct Magic(Array<u8, 16>), []
+        pub struct Magic(Array<u8, 16>), [], display = false, bitflags = false,
     );
-
     impl core::fmt::Display for Magic {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             write!(f, "[")?;
@@ -33,7 +36,6 @@ pub mod elf_header {
             Ok(())
         }
     }
-
     define_model_type!(
         #[derive(PartialEq, Eq)]
         pub struct Type(Half),
@@ -49,10 +51,9 @@ pub mod elf_header {
     #define ET_HIOS		0xfeff
     #define ET_LOPROC	0xff00
     #define ET_HIPROC	0xffff
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
-
     define_model_type!(
         #[derive(PartialEq, Eq)]
         pub struct Machine(Half),
@@ -240,8 +241,8 @@ pub mod elf_header {
     #define EM_CSKY		252
     #define EM_NUM		253
     #define EM_ALPHA	0x9026
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
@@ -252,29 +253,28 @@ pub mod elf_header {
     #define EV_NONE		0
     #define EV_CURRENT	1
     #define EV_NUM		2
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
         pub struct Entry(Addr),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
     define_model_type!(
         #[derive(PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
         pub struct PhOff(Off),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
     define_model_type!(
         #[derive(PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
         pub struct ShOff(Off),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
-
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct Flag(Word),
@@ -290,41 +290,41 @@ pub mod elf_header {
     #define EF_SPARC_SUN_US1	0x000200
     #define EF_SPARC_HAL_R1		0x000400
     #define EF_SPARC_SUN_US3	0x000800
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct EhSize(Half),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct PhEntrySize(Half),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct PhNum(Half),
         [
     #define PN_XNUM		0xffff
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct ShEntrySize(Half),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct ShNum(Half),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
@@ -344,10 +344,9 @@ pub mod elf_header {
     #define SHN_COMMON	0xfff2		/* Associated symbol is common */
     #define SHN_XINDEX	0xffff		/* Index is in extra table.  */
     #define SHN_HIRESERVE	0xffff		/* End of reserved indices */
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
-
     define_composed_type!(
         pub struct Header {
             /// Magic number and other info
@@ -392,7 +391,7 @@ pub mod elf_header {
             /// Section header string table index
             pub e_shstrndx: Option<ShStrIndex>,
         },
-        display_implementation = true
+        display = true,
     );
 }
 
@@ -402,8 +401,8 @@ pub mod section_header {
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct Name(Word),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
@@ -447,8 +446,8 @@ pub mod section_header {
     #define SHT_HIPROC	  0x7fffffff	/* End of processor-specific */
     #define SHT_LOUSER	  0x80000000	/* Start of application-specific */
     #define SHT_HIUSER	  0x8fffffff	/* End of application-specific */
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
@@ -474,57 +473,57 @@ pub mod section_header {
                            (Solaris).  */
     #define SHF_EXCLUDE	     (1 << 31)	/* Section is excluded unless
                            referenced or allocated (Solaris).*/
-        ]
-        display_implementation = true
+        ],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct VirtualAddress(Addr),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct FileOffset(Off),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct Size(XWord),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct Link(Word),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct Info(Word),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct Align(XWord),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_model_type!(
         #[derive(PartialEq, Eq, Clone, Copy)]
         pub struct EntrySize(XWord),
-        []
-        display_implementation = true
+        [],
+        display = true, bitflags = false,
     );
 
     define_composed_type!(
@@ -533,7 +532,7 @@ pub mod section_header {
             /// Section name (string tbl index)
             sh_name: Option<Name>,
 
-            /// Section type  
+            /// Section type
             sh_type: Option<Type>,
 
             /// Section flags
@@ -560,6 +559,7 @@ pub mod section_header {
             /// Entry size if section holds table
             sh_entsize: Option<EntrySize>,
         },
-        display_implementation = true
+        display = true,
     );
 }
+*/
