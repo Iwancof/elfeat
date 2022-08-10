@@ -22,235 +22,6 @@ pub trait ComposedFromU8Array: ModelFromU8Array {
 }
 
 #[macro_export]
-macro_rules! define_constants {
-    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
-     [
-        $(
-            $vis: vis ($name: ident: $val: expr),
-        )*
-     ],
-     display = $display: tt,
-     bitflags = true,
-    ) => {
-        $(#[$strmeta])*
-        $str_vis struct $strname(
-            $(#[$memmeta])*
-            $memtype
-        );
-
-        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
-                                    [
-                                        $(
-                                            $vis ($name: $val),
-                                        )*
-                                    ],
-                                    display = $display,
-                                    );
-
-        impl crate::types::model::ModelFromU8Array for $strname {
-            fn is_sanity(&self) -> bool {
-                self.has_constant()
-            }
-        }
-
-        paste::paste! {
-            $(
-                impl $strname {
-                    #[allow(non_upper_case_globals)]
-                    $vis const $name: $strname = $strname($val);
-
-                    #[allow(unused)]
-                    #[allow(non_snake_case)]
-                    pub fn [<has_ $name>](&self) -> bool {
-                        self.has(Self::$name)
-                    }
-
-                    #[allow(unused)]
-                    #[allow(non_snake_case)]
-                    pub fn [<is_ $name>](&self) -> bool {
-                        self == &Self::$name
-                    }
-                }
-            )*
-
-            impl $strname {
-                #[allow(unused)]
-                pub fn has_constant(&self) -> bool {
-                    $(
-                        self.[<has_ $name>]() ||
-                    )* false
-                }
-            }
-        }
-
-        impl $strname {
-            pub fn has(&self, left: Self) -> bool {
-                self.inner() & left.inner() != 0
-            }
-        }
-
-    };
-    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
-     [
-        $(
-            $vis: vis ($name: ident: $val: expr),
-        )*
-     ],
-     display = $display: tt,
-     bitflags = false,
-     ) => {
-        $(#[$strmeta])*
-        $str_vis struct $strname(
-            $(#[$memmeta])*
-            $memtype
-        );
-        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
-                                  [
-                                    $(
-                                        $vis ($name: $val),
-                                    )*
-                                  ],
-                                  display = $display,
-                                  );
-
-        impl crate::types::model::ModelFromU8Array for $strname {
-            fn is_sanity(&self) -> bool {
-                $(
-                    if self == &Self::$name {
-                        return true;
-                    }
-                )*
-                return false;
-            }
-        }
-
-        paste::paste! {
-            $(
-                impl $strname {
-                    #[allow(non_upper_case_globals)]
-                    $vis const $name: Self = Self($val);
-
-                    #[allow(unused)]
-                    #[allow(non_snake_case)]
-                    pub fn [<is_ $name>](&self) -> bool {
-                        self == &Self::$name
-                    }
-                }
-            )*
-
-            impl $strname {
-                #[allow(unused)]
-                pub fn is_constant(&self) -> bool {
-                    $(
-                        self.[<is_ $name>]() ||
-                    )* false
-                }
-            }
-        }
-     };
-    /*
-
-    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty, [],
-     display = $display: expr,
-     bitflags = false,
-     ) => {
-        define_constants!($strname, [], display = false, bitflags = false,);
-        impl core::fmt::Display for $strname {
-            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                return write!(fmt, "{:?}", self.0);
-            }
-        }
-    };
-    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty, [],
-    display = false,
-    bitflags = false,
-    ) => {
-        impl core::fmt::Debug for $struct_name {
-            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                return write!(fmt, "{} {{ ({:?}) }}", core::any::type_name::<$struct_name>(), self.0);
-            }
-        }
-    };
-    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
-     [
-        $(
-            $vis: vis ($name: ident: $val: expr),
-        )*
-    ],
-    display = true,
-    bitflags = false,
-    ) => {
-        define_constants!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
-        [
-            $(
-                $vis ($name: $val),
-            )*
-        ],
-        display = false,
-        bitflags = false,
-        );
-        impl core::fmt::Display for $strname {
-            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                let _width = fmt.width().unwrap_or_else(|| 0);
-
-                $(
-                    if self == &Self::$name {
-                        return write!(fmt, "{}({:?})", stringify!($name), self.0);
-                    }
-                )*
-
-                return write!(fmt, "{}({:?})", "Unknown", self.0);
-            }
-        }
-    };
-    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
-     [
-        $(
-            $vis: vis ($name: ident: $val: expr),
-        )*
-     ],
-     display = false,
-     bitflags = false,
-    ) => {
-        paste::paste! {
-            $(
-                impl $strname {
-                    #[allow(non_upper_case_globals)]
-                    $vis const $name: Self = Self($val);
-
-                    #[allow(unused)]
-                    #[allow(non_snake_case)]
-                    pub fn [<is_ $name>](&self) -> bool {
-                        self == &Self::$name
-                    }
-                }
-            )*
-
-            impl $strname {
-                #[allow(unused)]
-                pub fn is_constant(&self) -> bool {
-                    $(
-                        self.[<is_ $name>]() ||
-                    )* false
-                }
-            }
-        }
-        impl core::fmt::Debug for $strname {
-            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                $(
-                    if self == &Self::$name {
-                        return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$strname>(), stringify!($name), self.0);
-                    }
-                )*
-
-                return write!(fmt, "{} {{ {}({:?}) }}", core::any::type_name::<$strname>(), "Unknown", self.0);
-            }
-        }
-    };
-    */
-}
-
-#[macro_export]
 macro_rules! define_model_type_bitflags {
     ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($_memmeta: meta)*, $memtype: ty,
      [],
@@ -290,7 +61,34 @@ macro_rules! define_model_type_bitflags {
     ) => {
         impl core::fmt::Debug for $strname {
             fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                unimplemented!()
+                let mut is_wrote = false;
+                let mut copyed = *self;
+
+                write!(fmt, "{} {{ {}(", core::any::type_name::<$strname>(), self.inner())?;
+
+                paste::paste! {
+                    $(
+                        if copyed.[<off_ $name>]() {
+                            if is_wrote {
+                                write!(fmt, " | {}({})", stringify!($name), $val)?;
+                            } else {
+                                write!(fmt, "{}({})", stringify!($name), $val)?;
+                            }
+                            is_wrote = true;
+                        }
+                    )*
+                }
+
+                if !copyed.is_zero() {
+                    if is_wrote {
+                        write!(fmt, " | Unknown({})", copyed.inner())?;
+                    } else {
+                        write!(fmt, "Unknown({})", copyed.inner())?;
+                    }
+                }
+                write!(fmt, ") }}")?;
+
+                Ok(())
             }
         }
     };
@@ -310,7 +108,39 @@ macro_rules! define_model_type_bitflags {
                                     ],
                                     display = false,
                                     );
-        // Display implementation here
+
+        impl core::fmt::Display for $strname {
+            fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let mut is_wrote = false;
+                let mut copyed = *self;
+
+                write!(fmt, "(")?;
+
+                paste::paste! {
+                    $(
+                        if copyed.[<off_ $name>]() {
+                            if is_wrote {
+                                write!(fmt, " | {}", stringify!($name))?;
+                            } else {
+                                write!(fmt, "{}", stringify!($name))?;
+                            }
+                            is_wrote = true;
+                        }
+                    )*
+                }
+
+                if !copyed.is_zero() {
+                    if is_wrote {
+                        write!(fmt, " | Unknown({})", copyed.inner())?;
+                    } else {
+                        write!(fmt, "Unknown({})", copyed.inner())?;
+                    }
+                }
+                write!(fmt, ")")?;
+
+                Ok(())
+            }
+        }
     };
 }
 
@@ -384,6 +214,264 @@ macro_rules! define_model_type_normal {
             }
         }
     };
+}
+
+#[macro_export]
+macro_rules! define_constants {
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $vis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = $display: tt,
+     bitflags = true,
+    ) => {
+        $(#[$strmeta])*
+        $str_vis struct $strname(
+            $(#[$memmeta])*
+            $memtype
+        );
+
+        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+                                    [
+                                        $(
+                                            $vis ($name: $val),
+                                        )*
+                                    ],
+                                    display = $display,
+                                    );
+
+        impl crate::types::model::ModelFromU8Array for $strname {
+            fn is_sanity(&self) -> bool {
+                let mut copyed = *self;
+                paste::paste! {
+                    $(
+                        copyed.[<off_ $name>]();
+                    )*
+                }
+
+                copyed.is_zero()
+            }
+        }
+
+        paste::paste! {
+            $(
+                impl $strname {
+                    #[allow(non_upper_case_globals)]
+                    $vis const $name: $strname = $strname($val);
+
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<get_ $name>](&self) -> bool {
+                        self.get(Self::$name)
+                    }
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<set_ $name>](&mut self, val: bool) -> bool {
+                        self.set(Self::$name, val)
+                    }
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<on_ $name>](&mut self) -> bool {
+                        self.on(Self::$name)
+                    }
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<off_ $name>](&mut self) -> bool {
+                        self.off(Self::$name)
+                    }
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<is_ $name>](&self) -> bool {
+                        self == &Self::$name
+                    }
+                }
+            )*
+        }
+
+        impl core::ops::Not for $strname {
+            type Output = Self;
+
+            fn not(self) -> Self::Output {
+                Self::new(!self.inner())
+            }
+        }
+
+        impl core::ops::BitOr for $strname {
+            type Output = Self;
+
+            fn bitor(self, rhs: Self) -> Self::Output {
+                Self::new(
+                    self.inner() | rhs.inner()
+                )
+            }
+        }
+
+        impl core::ops::BitAnd for $strname {
+            type Output = Self;
+
+            fn bitand(self, rhs: Self) -> Self::Output {
+                Self::new(
+                    self.inner() & rhs.inner()
+                )
+            }
+        }
+
+        impl $strname {
+            /// Return true if inner value is zero.
+            /// If self has an uncovered value, this returns false.
+            #[allow(unused)]
+            pub fn is_zero(&self) -> bool {
+                self.inner() == &0
+            }
+
+            /// Return true if self dosen't have any constants.
+            /// If self has only an uncovered value, this returns true.
+            #[allow(unused)]
+            pub fn is_empty(&self) -> bool {
+                paste::paste! {
+                    $(
+                        if self.[<get_ $name>]() {
+                            return false;
+                        };
+                    )*
+                }
+                return true;
+            }
+
+            /// Set value(bool) at pos(Self)
+            /// The return value is previous.
+            #[allow(unused)]
+            pub fn set(&mut self, pos: Self, val: bool) -> bool {
+                let old = self.get(pos);
+                if val {
+                    *self = *self | pos;
+                } else {
+                    *self = *self & (!pos);
+                }
+                old
+            }
+
+            /// Set value(bool) at pos(usize)
+            /// The return value is previous.
+            #[allow(unused)]
+            pub fn set_at(&mut self, at: usize, val: bool) -> bool {
+                let pos = Self::new(1 << at);
+                self.set(pos, val)
+            }
+
+            /// Get value at pos(Self)
+            #[allow(unused)]
+            pub fn get(&self, pos: Self) -> bool {
+                (*self & pos).inner() != &0
+            }
+
+            /// Get value at pos(usize)
+            #[allow(unused)]
+            pub fn get_at(&self, at: usize) -> bool {
+                let pos = Self::new(1 << at);
+                self.get(pos)
+            }
+
+            /// Toggle value at pos(Self)
+            #[allow(unused)]
+            pub fn toggle(&mut self, pos: Self) -> bool {
+                self.set(pos, !self.get(pos))
+            }
+
+            /// Toggle value at pos(usize)
+            #[allow(unused)]
+            pub fn toggle_at(&mut self, at: usize) -> bool {
+                let pos = Self::new(1 << at);
+                self.toggle(pos)
+            }
+
+            /// Turn on at pos(Self)
+            #[allow(unused)]
+            pub fn on(&mut self, pos: Self) -> bool {
+                self.set(pos, true)
+            }
+
+            /// Turn on at pos(usize)
+            #[allow(unused)]
+            pub fn on_at(&mut self, at: usize) -> bool {
+                let pos = Self::new(1 << at);
+                self.on(pos)
+            }
+
+            /// Turn off at pos(Self)
+            #[allow(unused)]
+            pub fn off(&mut self, pos: Self) -> bool {
+                self.set(pos, false)
+            }
+
+            /// Turn off at pos(usize)
+            #[allow(unused)]
+            pub fn off_at(&mut self, at: usize) -> bool {
+                let pos = Self::new(1 << at);
+                self.on(pos)
+            }
+        }
+    };
+    ($($strmeta: meta)*, $str_vis: vis, $strname: ident, $($memmeta: meta)*, $memtype: ty,
+     [
+        $(
+            $vis: vis ($name: ident: $val: expr),
+        )*
+     ],
+     display = $display: tt,
+     bitflags = false,
+     ) => {
+        $(#[$strmeta])*
+        $str_vis struct $strname(
+            $(#[$memmeta])*
+            $memtype
+        );
+        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+                                  [
+                                    $(
+                                        $vis ($name: $val),
+                                    )*
+                                  ],
+                                  display = $display,
+                                  );
+
+        impl crate::types::model::ModelFromU8Array for $strname {
+            fn is_sanity(&self) -> bool {
+                $(
+                    if self == &Self::$name {
+                        return true;
+                    }
+                )*
+                return false;
+            }
+        }
+
+        paste::paste! {
+            $(
+                impl $strname {
+                    #[allow(non_upper_case_globals)]
+                    $vis const $name: Self = Self($val);
+
+                    #[allow(unused)]
+                    #[allow(non_snake_case)]
+                    pub fn [<is_ $name>](&self) -> bool {
+                        self == &Self::$name
+                    }
+                }
+            )*
+
+            impl $strname {
+                #[allow(unused)]
+                pub fn is_constant(&self) -> bool {
+                    $(
+                        self.[<is_ $name>]() ||
+                    )* false
+                }
+            }
+        }
+     };
 }
 
 /// Define modeled types.
@@ -827,6 +915,7 @@ mod tests {
         struct MockType {
             a: Option<Array<MT1, 3>>,
             v: Option<MT2>,
+            bf: Option<BF>,
         },
         display = true,
     );
@@ -841,12 +930,13 @@ mod tests {
 
         let (size, mt) = MockType::from_slice(slice).unwrap();
 
-        assert_eq!(size, (16 / 8) * 3 + (128 / 8));
+        assert_eq!(size, (16 / 8) * 3 + (128 / 8) + (16 / 8));
         assert_eq!(
             mt.a,
             Some([0x0201.into(), 0x0403.into(), 0x0605.into()].into())
         );
         assert_eq!(mt.v, Some(0x08070605040302010807060504030201.into()));
+        assert_eq!(mt.bf, Some(0x0201.into()));
         assert_eq!(mt.is_sanity(), false);
     }
 
@@ -855,14 +945,17 @@ mod tests {
         let mut d = MockType {
             a: Some([MT1::VAL, MT1::VAL, MT1::VAL].into()),
             v: Some(MT2::VAL),
+            bf: Some(BF(0b11)),
         };
 
         assert_eq!(d.is_sanity(), true);
 
         d.get_a_unwrap_mut()[0] = 10.into();
+        *d.get_bf_unwrap_mut().inner_mut() |= 0b100;
 
         assert_eq!(d.is_sanity_a(), false);
         assert_eq!(d.is_sanity_v(), true);
+        assert_eq!(d.is_sanity_bf(), false);
         assert_eq!(d.is_sanity(), false);
     }
 }

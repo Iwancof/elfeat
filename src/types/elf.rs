@@ -4,7 +4,6 @@ use crate::{
     define_model_type_normal,
 };
 
-/*
 mod raw_elf64 {
     pub type Half = u16;
     pub type Word = u32;
@@ -467,14 +466,14 @@ pub mod section_header {
     #define SHF_TLS		     (1 << 10)	/* Section hold thread-local data.  */
     #define SHF_COMPRESSED	     (1 << 11)	/* Section with compressed data. */
     #define SHF_MASKOS	     0x0ff00000	/* OS-specific.  */
-    #define SHF_MASKPROC	     0xf0000000	/* Processor-specific */
+    #define SHF_MASKPROC	     0xf0000000u64	/* Processor-specific */
     #define SHF_GNU_RETAIN	     (1 << 21)  /* Not to be GCed by linker.  */
     #define SHF_ORDERED	     (1 << 30)	/* Special ordering requirement
                            (Solaris).  */
     #define SHF_EXCLUDE	     (1 << 31)	/* Section is excluded unless
                            referenced or allocated (Solaris).*/
         ],
-        display = true, bitflags = false,
+        display = true, bitflags = true,
     );
 
     define_model_type!(
@@ -562,4 +561,3 @@ pub mod section_header {
         display = true,
     );
 }
-*/

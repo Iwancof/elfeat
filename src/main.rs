@@ -6,9 +6,6 @@ use file::Sequential;
 #[macro_use]
 pub mod types;
 
-fn main() {}
-
-/*
 use types::elf::*;
 use types::model::ComposedFromU8Array;
 
@@ -33,7 +30,7 @@ fn main() {
         panic!();
     }
 
-    let section_header_offset = header.e_shoff.unwrap().inner();
+    let section_header_offset = *header.e_shoff.unwrap().inner();
 
     let mut section_seeker = s.to_seeakble().seek(section_header_offset);
 
@@ -42,6 +39,7 @@ fn main() {
             .interpret_next::<section_header::Header>()
             .to_tuple_unwrap();
 
+        println!("{}", read);
         if read.get_sh_type_unwrap().is_SHT_STRTAB() && read.get_sh_flags_unwrap().is_SHF_ALLOC() {
             break read;
         }
@@ -49,13 +47,12 @@ fn main() {
 
     println!("{}", strtab_header);
 
-    section_seeker.seek(strtab_header.get_sh_offset_unwrap().inner());
+    section_seeker.seek(*strtab_header.get_sh_offset_unwrap().inner());
 
-    for _i in 0..20 {
+    for _i in 0..10 {
         let r = section_seeker
             .interpret_next::<types::primitive::NullTermString>()
             .to_tuple_unwrap();
         println!("{}", r.1);
     }
 }
-*/
