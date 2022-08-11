@@ -1,5 +1,6 @@
 pub mod elf;
 pub mod primitive;
+pub mod zip;
 
 #[macro_use]
 pub mod model;
