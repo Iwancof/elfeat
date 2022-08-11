@@ -37,7 +37,7 @@ macro_rules! define_model_type_bitflags {
      [],
      display = true,
     ) => {
-        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($_memmeta)*, $memtype,
+        crate::define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($_memmeta)*, $memtype,
                                     [
                                         $(
                                             $_memvis ($name: $val),
@@ -100,7 +100,7 @@ macro_rules! define_model_type_bitflags {
      ],
      display = true,
     ) => {
-        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($_memmeta)*, $memtype,
+        crate::define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($_memmeta)*, $memtype,
                                     [
                                         $(
                                             $_memvis ($name: $val),
@@ -160,7 +160,7 @@ macro_rules! define_model_type_normal {
      [],
      display = true,
     ) => {
-        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+        crate::define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
                                     [],
                                     display = false,
                                     );
@@ -199,7 +199,7 @@ macro_rules! define_model_type_normal {
      ],
      display = true,
     ) => {
-        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+        crate::define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
                                     [
                                         $(
                                             $memvis ($name: $val),
@@ -239,7 +239,7 @@ macro_rules! define_constants {
             $memtype
         );
 
-        define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+        crate::define_model_type_bitflags!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
                                     [
                                         $(
                                             $vis ($name: $val),
@@ -329,7 +329,7 @@ macro_rules! define_constants {
             /// If self has an uncovered value, this returns false.
             #[allow(unused)]
             pub fn is_zero(&self) -> bool {
-                self.inner() == &0
+                self.inner() == 0
             }
 
             /// Return true if self dosen't have any constants.
@@ -370,7 +370,7 @@ macro_rules! define_constants {
             /// Get value at pos(Self)
             #[allow(unused)]
             pub fn get(&self, pos: Self) -> bool {
-                (*self & pos).inner() != &0
+                (*self & pos).inner() != 0
             }
 
             /// Get value at pos(usize)
@@ -434,7 +434,7 @@ macro_rules! define_constants {
             $(#[$memmeta])*
             $memtype
         );
-        define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
+        crate::define_model_type_normal!($($strmeta)*, $str_vis, $strname, $($memmeta)*, $memtype,
                                   [
                                     $(
                                         $vis ($name: $val),
@@ -516,7 +516,7 @@ macro_rules! define_model_type {
         ],
         $($extra: tt)*
     ) => {
-        define_constants!(
+        crate::define_constants!(
             $($struct_meta)*, $vis, $struct_name, $($member_meta)*, $inner_type,
             [
                 $(
@@ -534,7 +534,7 @@ macro_rules! define_model_type {
                 }
             }
             fn to_slice(&self) -> Box<[u8]> {
-                self.inner().to_slice()
+                self.inner_ref().to_slice()
             }
         }
 
@@ -551,7 +551,11 @@ macro_rules! define_model_type {
 
         impl $struct_name {
             #[allow(unused)]
-            pub fn inner(&self) -> &$inner_type {
+            pub fn inner(self) -> $inner_type {
+                self.0
+            }
+            #[allow(unused)]
+            pub fn inner_ref(&self) -> &$inner_type {
                 &self.0
             }
             #[allow(unused)]
@@ -581,7 +585,7 @@ macro_rules! define_model_type {
         ],
         $($extra: tt)*
     ) => {
-        define_model_type!(
+        crate::define_model_type!(
             $(#[$struct_meta])*
             $vis struct $struct_name(
                 $(#[$member_meta])*
@@ -609,7 +613,7 @@ macro_rules! define_model_type {
         ],
         $($extra: tt)*
     ) => {
-        define_model_type!(
+        crate::define_model_type!(
             $(#[$struct_meta])*
             $vis struct $struct_name(
                 $(#[$member_meta])*
@@ -649,7 +653,7 @@ macro_rules! define_composed_type {
         },
         display = true,
     ) => {
-        define_composed_type!(
+        crate::define_composed_type!(
             $(#[$struct_meta])*
             $vis struct $struct_name {
                 $(

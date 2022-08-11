@@ -1,8 +1,5 @@
 use super::Array;
-use crate::{
-    define_composed_type, define_constants, define_model_type, define_model_type_bitflags,
-    define_model_type_normal,
-};
+use crate::{define_composed_type, define_model_type};
 
 mod raw_elf64 {
     pub type Half = u16;
